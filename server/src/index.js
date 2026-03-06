@@ -8,6 +8,8 @@ const PORT = process.env.PORT || 5000;
 
 const server = http.createServer(app);
 
+// Initialize Socket.io
+initSocket(server);
 
 connectDB().then(() => {
   server.listen(PORT, () => {
