@@ -1,68 +1,203 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
+/* ─── CSS Variables ─── */
+@layer base {
   :root {
-    color: #213547;
-    background-color: #ffffff;
+    --bg:         #f8fafc;
+    --bg-2:       #f1f5f9;
+    --card:       #ffffff;
+    --border:     #e2e8f0;
+    --text:       #0f172a;
+    --text-muted: #64748b;
+    --primary:    #6366f1;
+    --primary-h:  #4f46e5;
+    --ring:       #6366f140;
   }
-  a:hover {
-    color: #747bff;
+
+  .dark {
+    --bg:         #0d1117;
+    --bg-2:       #161b27;
+    --card:       #1a2030;
+    --border:     #262f42;
+    --text:       #e8edf5;
+    --text-muted: #8b9ab5;
+    --primary:    #818cf8;
+    --primary-h:  #6366f1;
+    --ring:       #818cf840;
   }
-  button {
-    background-color: #f9f9f9;
+
+  * {
+    transition-property: background-color, border-color, color;
+    transition-duration: 200ms;
+    transition-timing-function: ease;
   }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    @apply antialiased;
+  }
+
+  ::selection {
+    background: var(--ring);
+  }
+}
+
+/* ─── Component Classes ─── */
+@layer components {
+  /* Buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5
+           bg-primary-500 hover:bg-primary-600
+           dark:bg-primary-500 dark:hover:bg-primary-600
+           text-white font-semibold py-2 px-4 rounded-xl
+           transition-all duration-200
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
+           hover:shadow-lg hover:shadow-primary-500/30
+           hover:-translate-y-0.5 active:translate-y-0 active:shadow-none;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5
+           bg-white dark:bg-surface-800
+           border border-gray-200 dark:border-surface-850
+           hover:bg-gray-50 dark:hover:bg-surface-850
+           text-gray-700 dark:text-gray-300 font-semibold py-2 px-4 rounded-xl
+           transition-all duration-200
+           hover:-translate-y-0.5 active:translate-y-0;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5
+           text-gray-500 dark:text-gray-400
+           hover:bg-gray-100 dark:hover:bg-surface-850
+           hover:text-gray-800 dark:hover:text-gray-200
+           font-medium py-2 px-3 rounded-xl transition-all duration-200;
+  }
+
+  /* Inputs */
+  .input-field {
+    @apply w-full
+           border border-gray-200 dark:border-surface-850
+           rounded-xl px-3 py-2.5
+           bg-white dark:bg-surface-900
+           text-gray-900 dark:text-gray-100
+           placeholder-gray-400 dark:placeholder-gray-600
+           focus:outline-none focus:ring-2 focus:ring-primary-500/30
+           focus:border-primary-400 dark:focus:border-primary-500
+           transition-all duration-200
+           text-sm;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white dark:bg-[var(--card)]
+           rounded-2xl
+           border border-gray-100 dark:border-[var(--border)]
+           shadow-sm;
+  }
+
+  .card-hover {
+    @apply card cursor-pointer
+           hover:shadow-md hover:shadow-black/5 dark:hover:shadow-black/20
+           hover:-translate-y-1 transition-all duration-200;
+  }
+
+  /* Nav */
+  .nav-glass {
+    @apply bg-white/90 dark:bg-surface-900/90
+           backdrop-blur-xl
+           border-b border-gray-200/80 dark:border-surface-850/80;
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full;
+  }
+
+  /* Tab buttons */
+  .tab-btn {
+    @apply flex items-center gap-1.5 px-4 py-3.5 text-sm font-medium
+           border-b-2 transition-all duration-200 whitespace-nowrap;
+  }
+  .tab-btn-active {
+    @apply tab-btn border-primary-500 dark:border-primary-400
+           text-primary-600 dark:text-primary-400;
+  }
+  .tab-btn-inactive {
+    @apply tab-btn border-transparent
+           text-gray-500 dark:text-gray-400
+           hover:text-gray-800 dark:hover:text-gray-200
+           hover:border-gray-300 dark:hover:border-gray-600;
+  }
+
+  /* Section title */
+  .section-title {
+    @apply text-xl font-bold text-gray-900 dark:text-gray-100;
+  }
+
+  /* Gradient heading */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-500 via-violet-500 to-indigo-400
+           bg-clip-text text-transparent;
+  }
+
+  /* Avatar */
+  .avatar {
+    @apply rounded-full flex items-center justify-center
+           font-semibold flex-shrink-0 uppercase;
+  }
+
+  /* Loading skeleton */
+  .skeleton {
+    @apply bg-gray-200 dark:bg-surface-850 rounded-lg animate-pulse;
+  }
+
+  /* Dark mode toggle */
+  .theme-toggle {
+    @apply w-9 h-9 rounded-xl flex items-center justify-center
+           bg-gray-100 dark:bg-surface-850
+           text-gray-500 dark:text-gray-400
+           hover:bg-gray-200 dark:hover:bg-surface-800
+           transition-all duration-200;
+  }
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { @apply bg-gray-300 dark:bg-gray-700 rounded-full; }
+::-webkit-scrollbar-thumb:hover { @apply bg-gray-400 dark:bg-gray-600; }
+
+/* ─── Page enter animation ─── */
+.page-enter {
+  animation: fadeUp 0.35s ease forwards;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+/* ─── Select dark mode fix ─── */
+.dark select option {
+  background-color: #1a2030;
+  color: #e8edf5;
 }
