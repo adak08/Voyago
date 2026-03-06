@@ -2,6 +2,9 @@ import express from "express";
 import cors from "cors";
 import { errorHandler, notFound } from "./middlewares/error.middleware.js";
 
+// Routes
+import authRoutes from "./routes/auth.routes.js";
+
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -25,6 +28,9 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.get("/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
+
+// API Routes
+app.use("/api/v1/auth", authRoutes);
 
 // Error handling
 app.use(notFound);
