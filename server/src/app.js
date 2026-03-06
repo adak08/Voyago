@@ -5,6 +5,7 @@ import { errorHandler, notFound } from "./middlewares/error.middleware.js";
 // Routes
 import authRoutes from "./routes/auth.routes.js";
 import expenseRoutes from "./routes/expense.routes.js";
+import itineraryRoutes from "./routes/itinerary.routes.js";
 import tripRoutes from "./routes/trip.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 
@@ -35,6 +36,7 @@ app.get("/health", (req, res) => {
 // API Routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/expenses", expenseRoutes);
+app.use("/api/v1/itinerary", itineraryRoutes);
 app.use("/api/v1/trips", tripRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 
