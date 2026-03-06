@@ -5,6 +5,7 @@ import { errorHandler, notFound } from "./middlewares/error.middleware.js";
 // Routes
 import authRoutes from "./routes/auth.routes.js";
 import expenseRoutes from "./routes/expense.routes.js";
+import itineraryRoutes from "./routes/itinerary.routes.js";
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -33,6 +34,7 @@ app.get("/health", (req, res) => {
 // API Routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/expenses", expenseRoutes);
+app.use("/api/v1/itinerary", itineraryRoutes);
 
 // Error handling
 app.use(notFound);
