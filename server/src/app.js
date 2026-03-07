@@ -8,6 +8,7 @@ import expenseRoutes from "./routes/expense.routes.js";
 import itineraryRoutes from "./routes/itinerary.routes.js";
 import tripRoutes from "./routes/trip.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import chatRoutes from "./routes/chat.routes.js";
 
 import dotenv from "dotenv";
 import path from "path";
@@ -44,6 +45,7 @@ app.use("/api/v1/expenses", expenseRoutes);
 app.use("/api/v1/itinerary", itineraryRoutes);
 app.use("/api/v1/trips", tripRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
+app.use("/api/v1/chat", chatRoutes);
 
 // Error handling
 app.use(notFound);

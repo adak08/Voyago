@@ -22,4 +22,47 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 });
 
-export { cloudinary, upload };
+const chatStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: "smart-trip-planner/chat",
+    resource_type: "auto",
+  },
+});
+
+const isAllowedChatFile = (mimetype = "") => {
+  if (mimetype.startsWith("image/")) return true;
+  if (mimetype.startsWith("video/")) return true;
+  if (mimetype.startsWith("audio/")) return true;
+
+  const allowed = [
+    "application/pdf",
+    "text/plain",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/zip",
+    "application/x-rar-compressed",
+    "text/csv",
+  ];
+
+  return allowed.includes(mimetype);
+};
+
+const chatUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
+  fileFilter: (req, file, cb) => {
+    if (isAllowedChatFile(file?.mimetype)) {
+      cb(null, true);
+      return;
+    }
+
+    cb(new Error("Unsupported file type"));
+  },
+});
+
+export { cloudinary, upload, chatUpload };
