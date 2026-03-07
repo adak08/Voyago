@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, Calendar, DollarSign, FileText, Plane } from "lucide-react";
+import {
+  ArrowLeft,
+  MapPin,
+  Calendar,
+  DollarSign,
+  FileText,
+  Plane,
+} from "lucide-react";
 import { useTripStore } from "../store/tripStore";
 
 export default function CreateTrip() {
@@ -9,8 +16,13 @@ export default function CreateTrip() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
-    title: "", destination: "", description: "",
-    startDate: "", endDate: "", budget: "", currency: "INR",
+    title: "",
+    destination: "",
+    description: "",
+    startDate: "",
+    endDate: "",
+    budget: "",
+    currency: "INR",
   });
 
   const handleSubmit = async (e) => {
@@ -37,9 +49,15 @@ export default function CreateTrip() {
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 page-enter">
-        <button onClick={() => navigate("/dashboard")}
-          className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 mb-8 text-sm font-medium transition-colors group">
-          <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> Back to Dashboard
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 mb-8 text-sm font-medium transition-colors group"
+        >
+          <ArrowLeft
+            size={16}
+            className="group-hover:-translate-x-0.5 transition-transform"
+          />{" "}
+          Back to Dashboard
         </button>
 
         <div className="card p-8">
@@ -49,8 +67,12 @@ export default function CreateTrip() {
               <Plane className="text-white" size={20} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100">Plan a New Trip</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Fill in the details to get started</p>
+              <h1 className="text-2xl font-extrabold text-gray-900 dark:text-gray-100">
+                Plan a New Trip
+              </h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Fill in the details to get started
+              </p>
             </div>
           </div>
 
@@ -66,9 +88,17 @@ export default function CreateTrip() {
                 Trip Title *
               </label>
               <div className="relative">
-                <FileText className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-600" size={16} />
-                <input type="text" className="input-field pl-9" placeholder="Goa Beach Getaway"
-                  {...f("title")} required />
+                <FileText
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-600"
+                  size={16}
+                />
+                <input
+                  type="text"
+                  className="input-field pl-9"
+                  placeholder="Goa Beach Getaway"
+                  {...f("title")}
+                  required
+                />
               </div>
             </div>
 
@@ -77,9 +107,17 @@ export default function CreateTrip() {
                 Destination *
               </label>
               <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-600" size={16} />
-                <input type="text" className="input-field pl-9" placeholder="Goa, India"
-                  {...f("destination")} required />
+                <MapPin
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-600"
+                  size={16}
+                />
+                <input
+                  type="text"
+                  className="input-field pl-9"
+                  placeholder="Goa, India"
+                  {...f("destination")}
+                  required
+                />
               </div>
             </div>
 
@@ -87,8 +125,12 @@ export default function CreateTrip() {
               <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1.5">
                 Description
               </label>
-              <textarea className="input-field resize-none" rows={3} placeholder="What's this trip about?"
-                {...f("description")} />
+              <textarea
+                className="input-field resize-none"
+                rows={3}
+                placeholder="What's this trip about?"
+                {...f("description")}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -97,9 +139,16 @@ export default function CreateTrip() {
                   Start Date *
                 </label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-600" size={16} />
-                  <input type="date" className="input-field pl-9"
-                    {...f("startDate")} required />
+                  <Calendar
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-600"
+                    size={16}
+                  />
+                  <input
+                    type="date"
+                    className="input-field pl-9"
+                    {...f("startDate")}
+                    required
+                  />
                 </div>
               </div>
               <div>
@@ -107,9 +156,16 @@ export default function CreateTrip() {
                   End Date *
                 </label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-600" size={16} />
-                  <input type="date" className="input-field pl-9"
-                    {...f("endDate")} required />
+                  <Calendar
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-600"
+                    size={16}
+                  />
+                  <input
+                    type="date"
+                    className="input-field pl-9"
+                    {...f("endDate")}
+                    required
+                  />
                 </div>
               </div>
             </div>
@@ -120,9 +176,23 @@ export default function CreateTrip() {
                   Budget
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-600" size={16} />
-                  <input type="number" className="input-field pl-9" placeholder="50000"
-                    {...f("budget")} min="0" />
+                  <input
+                    type="number"
+                    className="input-field"
+                    placeholder={
+                      form.currency === "INR"
+                        ? "₹ 50000"
+                        : form.currency === "USD"
+                          ? "$ 1000"
+                          : form.currency === "EUR"
+                            ? "€ 1000"
+                            : form.currency === "GBP"
+                              ? "£ 1000"
+                              : "50000"
+                    }
+                    {...f("budget")}
+                    min="0"
+                  />
                 </div>
               </div>
               <div>
@@ -138,13 +208,19 @@ export default function CreateTrip() {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3 text-sm font-bold mt-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full py-3 text-sm font-bold mt-2"
+            >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Creating trip…
                 </span>
-              ) : "Create Trip 🚀"}
+              ) : (
+                "Create Trip 🚀"
+              )}
             </button>
           </form>
         </div>

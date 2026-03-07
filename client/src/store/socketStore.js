@@ -34,12 +34,15 @@ export const useSocketStore = create((set, get) => ({
     const { socket } = get();
     if (socket?.connected) return;
 
-    const newSocket = io(import.meta.env.VITE_SOCKET_URL || "http://localhost:5000", {
-      auth: { token },
-      transports: ["websocket"],
-      reconnection: true,
-      reconnectionDelay: 1000,
-    });
+    const newSocket = io(
+      import.meta.env.VITE_SOCKET_URL || "http://localhost:5000",
+      {
+        auth: { token },
+        transports: ["websocket"],
+        reconnection: true,
+        reconnectionDelay: 1000,
+      },
+    );
 
     newSocket.on("connect", () => {
       set({ connected: true });
@@ -58,7 +61,13 @@ export const useSocketStore = create((set, get) => ({
     const { socket } = get();
     if (socket) {
       socket.disconnect();
-      set({ socket: null, connected: false, messages: [], typingUsers: [], reactions: {} });
+      set({
+        socket: null,
+        connected: false,
+        messages: [],
+        typingUsers: [],
+        reactions: {},
+      });
     }
   },
 
@@ -89,11 +98,12 @@ export const useSocketStore = create((set, get) => ({
         const optimisticIndex = state.messages.findIndex(
           (m) =>
             m?.optimistic &&
-            (m.sender?._id === message.sender?._id || m.sender === message.sender?._id) &&
+            (m.sender?._id === message.sender?._id ||
+              m.sender === message.sender?._id) &&
             m.tripId === message.tripId &&
             m.type === message.type &&
             (m.message || "") === (message.message || "") &&
-            (m.mediaUrl || "") === (message.mediaUrl || "")
+            (m.mediaUrl || "") === (message.mediaUrl || ""),
         );
 
         if (optimisticIndex > -1) {
@@ -118,11 +128,16 @@ export const useSocketStore = create((set, get) => ({
 
   updateMessage: (tempId, nextMessage) => {
     set((state) => {
-      const index = state.messages.findIndex((m) => m._id === tempId || m.tempId === tempId);
+      const index = state.messages.findIndex(
+        (m) => m._id === tempId || m.tempId === tempId,
+      );
       if (index === -1) {
         if (!nextMessage) return {};
         const normalized = dedupeMessages([...state.messages, nextMessage]);
-        return { messages: normalized, reactions: buildReactionMap(normalized) };
+        return {
+          messages: normalized,
+          reactions: buildReactionMap(normalized),
+        };
       }
 
       const updated = [...state.messages];
@@ -175,15 +190,23 @@ export const useSocketStore = create((set, get) => ({
 
   applyReactionUpdate: ({ messageId, reactions }) => {
     if (!messageId) return;
-    set((state) => ({
-      reactions: {
-        ...state.reactions,
-        [messageId]: reactions || [],
-      },
-      messages: state.messages.map((msg) =>
-        msg._id === messageId ? { ...msg, reactions: reactions || [] } : msg
-      ),
-    }));
+
+    set((state) => {
+      const updatedMessages = state.messages.map((msg) => {
+        if (msg._id === messageId) {
+          return {
+            ...msg,
+            reactions: reactions || [],
+          };
+        }
+        return msg;
+      });
+
+      return {
+        messages: updatedMessages,
+        reactions: buildReactionMap(updatedMessages),
+      };
+    });
   },
 
   addTypingUser: (user) => {
@@ -194,6 +217,8 @@ export const useSocketStore = create((set, get) => ({
   },
 
   removeTypingUser: (userId) => {
-    set((state) => ({ typingUsers: state.typingUsers.filter((u) => u.userId !== userId) }));
+    set((state) => ({
+      typingUsers: state.typingUsers.filter((u) => u.userId !== userId),
+    }));
   },
 }));

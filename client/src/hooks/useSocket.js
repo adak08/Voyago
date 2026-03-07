@@ -28,7 +28,12 @@ export const useSocket = (tripId) => {
 
     // Expense sync
     socket.on("expense_added", (expense) => {
-      onExpenseAdded(expense);
+      const { expenses } = useTripStore.getState();
+
+      const exists = expenses.some((e) => e._id === expense._id);
+      if (!exists) {
+        onExpenseAdded(expense);
+      }
     });
 
     // Itinerary sync

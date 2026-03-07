@@ -70,37 +70,34 @@ export default function ChatBox({ tripId }) {
         createdAt: now,
       });
 
-      sendMessage(
-        { tripId, message, type, mediaUrl, fileName },
-        (ack) => {
-          if (ack?.success && ack.message) {
-            updateMessage(tempId, ack.message);
-            return;
-          }
-
-          updateMessage(tempId, {
-            _id: tempId,
-            tempId,
-            optimistic: false,
-            failed: true,
-            sender: {
-              _id: user.id,
-              name: user.name,
-              avatar: user.avatar,
-            },
-            tripId,
-            type,
-            message,
-            mediaUrl,
-            fileName,
-            readBy: [user.id],
-            reactions: [],
-            createdAt: now,
-          });
+      sendMessage({ tripId, message, type, mediaUrl, fileName }, (ack) => {
+        if (ack?.success && ack.message) {
+          updateMessage(tempId, ack.message);
+          return;
         }
-      );
+
+        updateMessage(tempId, {
+          _id: tempId,
+          tempId,
+          optimistic: false,
+          failed: true,
+          sender: {
+            _id: user.id,
+            name: user.name,
+            avatar: user.avatar,
+          },
+          tripId,
+          type,
+          message,
+          mediaUrl,
+          fileName,
+          readBy: [user.id],
+          reactions: [],
+          createdAt: now,
+        });
+      });
     },
-    [appendMessage, sendMessage, tripId, updateMessage, user]
+    [appendMessage, sendMessage, tripId, updateMessage, user],
   );
 
   const handleSend = (e) => {
@@ -142,7 +139,7 @@ export default function ChatBox({ tripId }) {
         setUploading(false);
       }
     },
-    [tripId, submitMessage]
+    [tripId, submitMessage],
   );
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
@@ -166,16 +163,24 @@ export default function ChatBox({ tripId }) {
       <div className="px-5 py-3.5 border-b border-gray-100 dark:border-surface-850 bg-white dark:bg-[var(--card)] flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-primary-50 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
-            <MessageCircle size={15} className="text-primary-500 dark:text-primary-400" />
+            <MessageCircle
+              size={15}
+              className="text-primary-500 dark:text-primary-400"
+            />
           </div>
-          <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm">Group Chat</h3>
+          <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm">
+            Group Chat
+          </h3>
         </div>
         {visibleTypingUsers.length > 0 && (
           <div className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
             <span className="flex gap-0.5">
-              {[0,1,2].map(i => (
-                <span key={i} className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-600 rounded-full animate-bounce"
-                  style={{ animationDelay: `${i * 0.15}s` }} />
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className="w-1.5 h-1.5 bg-gray-400 dark:bg-gray-600 rounded-full animate-bounce"
+                  style={{ animationDelay: `${i * 0.15}s` }}
+                />
               ))}
             </span>
             {visibleTypingUsers.map((u) => u.name).join(", ")} typing...
@@ -209,23 +214,33 @@ export default function ChatBox({ tripId }) {
                 </span>
               </div>
               {msgs.map((msg, idx) => {
-                const isMe = msg.sender?._id === user?.id || msg.sender === user?.id;
+                const isMe =
+                  msg.sender?._id === user?.id || msg.sender === user?.id;
                 return (
-                  <div key={`${msg._id || msg.tempId || "msg"}-${idx}`} className={`flex mb-3 ${isMe ? "justify-end" : "justify-start"}`}>
+                  <div
+                    key={`${msg._id || msg.tempId || "msg"}-${idx}`}
+                    className={`flex mb-3 ${isMe ? "justify-end" : "justify-start"}`}
+                  >
                     {!isMe && (
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center text-xs font-bold text-white mr-2.5 flex-shrink-0 mt-auto">
                         {msg.sender?.name?.[0]?.toUpperCase()}
                       </div>
                     )}
-                    <div className={`max-w-[72%] flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                    <div
+                      className={`max-w-[72%] flex flex-col ${isMe ? "items-end" : "items-start"}`}
+                    >
                       {!isMe && (
-                        <span className="text-xs text-gray-400 dark:text-gray-600 mb-1 ml-1 font-medium">{msg.sender?.name}</span>
+                        <span className="text-xs text-gray-400 dark:text-gray-600 mb-1 ml-1 font-medium">
+                          {msg.sender?.name}
+                        </span>
                       )}
-                      <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                        isMe
-                          ? "bg-primary-500 dark:bg-primary-500 text-white rounded-br-sm"
-                          : "bg-white dark:bg-surface-800 text-gray-900 dark:text-gray-100 shadow-sm border border-gray-50 dark:border-surface-850 rounded-bl-sm"
-                      }`}>
+                      <div
+                        className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                          isMe
+                            ? "bg-primary-500 dark:bg-primary-500 text-white rounded-br-sm"
+                            : "bg-white dark:bg-surface-800 text-gray-900 dark:text-gray-100 shadow-sm border border-gray-50 dark:border-surface-850 rounded-bl-sm"
+                        }`}
+                      >
                         {renderMessageContent(msg)}
                       </div>
 
@@ -233,9 +248,13 @@ export default function ChatBox({ tripId }) {
                         <div className="flex items-center gap-1 mt-1">
                           {["👍", "❤️", "😂"].map((emoji) => {
                             const mine = (msg.reactions || []).find(
-                              (r) => (r.userId?._id || r.userId)?.toString?.() === user?.id && r.emoji === emoji
+                              (r) =>
+                                (r.userId?._id || r.userId)?.toString?.() ===
+                                  user?.id && r.emoji === emoji,
                             );
-                            const count = (msg.reactions || []).filter((r) => r.emoji === emoji).length;
+                            const count = (msg.reactions || []).filter(
+                              (r) => r.emoji === emoji,
+                            ).length;
 
                             return (
                               <button
@@ -245,13 +264,19 @@ export default function ChatBox({ tripId }) {
                                   if (mine) removeReaction(tripId, msg._id);
                                   else addReaction(tripId, msg._id, emoji);
                                 }}
-                                className={`text-[11px] px-1.5 py-0.5 rounded-full border ${
-                                  mine
-                                    ? "bg-primary-50 dark:bg-primary-900/30 border-primary-200 dark:border-primary-800"
-                                    : "bg-white dark:bg-surface-900 border-gray-200 dark:border-surface-700"
-                                }`}
+                                className={`flex items-center gap-1 px-2 py-0.5 text-[11px] rounded-full border transition-all font-medium
+                              ${
+                                mine
+                                  ? "bg-primary-500 border-primary-500 text-white"
+                                  : "bg-white dark:bg-surface-900 border-gray-200 dark:border-surface-700 text-gray-700 dark:text-gray-300"
+                              }`}
                               >
-                                {emoji} {count > 0 ? count : ""}
+                                {emoji}
+                                {count > 0 && (
+                                  <span className="ml-1 text-gray-800 dark:text-gray-200 font-medium">
+                                    {count}
+                                  </span>
+                                )}
                               </button>
                             );
                           })}
@@ -260,7 +285,9 @@ export default function ChatBox({ tripId }) {
 
                       <span className="text-[11px] text-gray-400 dark:text-gray-600 mt-1 mx-1">
                         {format(new Date(msg.createdAt), "h:mm a")}
-                        {isMe && !msg.failed && (msg.readBy || []).length > 1 ? " Seen" : ""}
+                        {isMe && !msg.failed && (msg.readBy || []).length > 1
+                          ? " Seen"
+                          : ""}
                         {msg.optimistic ? " Sending..." : ""}
                         {msg.failed ? " Failed" : ""}
                       </span>
@@ -275,8 +302,10 @@ export default function ChatBox({ tripId }) {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSend}
-        className="px-4 py-3 bg-white dark:bg-[var(--card)] border-t border-gray-100 dark:border-surface-850 flex gap-2.5 flex-shrink-0">
+      <form
+        onSubmit={handleSend}
+        className="px-4 py-3 bg-white dark:bg-[var(--card)] border-t border-gray-100 dark:border-surface-850 flex gap-2.5 flex-shrink-0"
+      >
         <button
           type="button"
           onClick={open}
@@ -292,8 +321,11 @@ export default function ChatBox({ tripId }) {
           value={input}
           onChange={handleTyping}
         />
-        <button type="submit" disabled={!input.trim() || uploading}
-          className="w-10 h-10 bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition-all hover:-translate-y-0.5 active:translate-y-0">
+        <button
+          type="submit"
+          disabled={!input.trim() || uploading}
+          className="w-10 h-10 bg-primary-500 hover:bg-primary-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition-all hover:-translate-y-0.5 active:translate-y-0"
+        >
           <Send size={15} />
         </button>
       </form>
@@ -319,11 +351,23 @@ function mapMimeToMessageType(mimeType = "") {
 
 function renderMessageContent(msg) {
   if (msg.type === "image") {
-    return <img src={msg.mediaUrl} alt={msg.fileName || "image"} className="rounded-xl max-h-64 w-auto" />;
+    return (
+      <img
+        src={msg.mediaUrl}
+        alt={msg.fileName || "image"}
+        className="rounded-xl max-h-64 w-auto"
+      />
+    );
   }
 
   if (msg.type === "video") {
-    return <video src={msg.mediaUrl} controls className="rounded-xl max-h-64 w-auto" />;
+    return (
+      <video
+        src={msg.mediaUrl}
+        controls
+        className="rounded-xl max-h-64 w-auto"
+      />
+    );
   }
 
   if (msg.type === "audio") {
@@ -333,7 +377,12 @@ function renderMessageContent(msg) {
   if (msg.type === "file") {
     const label = msg.fileName || msg.message || "Download file";
     return (
-      <a href={msg.mediaUrl} target="_blank" rel="noreferrer" className="underline font-medium">
+      <a
+        href={msg.mediaUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="underline font-medium"
+      >
         {label}
       </a>
     );
