@@ -25,6 +25,13 @@ export const getItinerary = async (req, res, next) => {
 export const updateItinerary = async (req, res, next) => {
     try {
         const { days } = req.body;
+        days.forEach((day) => {
+            day.activities.sort((a, b) => {
+                const t1 = new Date(`1970/01/01 ${a.time}`);
+                const t2 = new Date(`1970/01/01 ${b.time}`);
+                return t1 - t2;
+            });
+        });
         const trip = await Trip.findById(req.params.tripId);
         if (!trip)
             return res

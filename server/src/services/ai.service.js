@@ -64,6 +64,12 @@ Use realistic places and estimated costs in INR.
 
         const parsed = JSON.parse(text);
 
+        (parsed.days || []).forEach((day) => {
+            day.activities.forEach((activity) => {
+                activity.source = "ai";
+            });
+        });
+
         return parsed.days || [];
     } catch (error) {
         console.error("Gemini AI Error:", error);

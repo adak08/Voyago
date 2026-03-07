@@ -11,6 +11,12 @@ const activitySchema = new mongoose.Schema({
         default: "other",
     },
     cost: { type: Number, default: 0 },
+
+    source: {
+        type: String,
+        enum: ["ai", "custom"],
+        default: "custom",
+    },
 });
 
 const daySchema = new mongoose.Schema({
