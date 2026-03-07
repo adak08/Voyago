@@ -44,7 +44,7 @@ export const register = async (req, res, next) => {
         await OTP.deleteMany({ email }); // clear old OTPs
         await OTP.create({ email, otp });
         console.log(`OTP for ${email}: ${otp}`);
-        // await sendOTPEmail(email, name, otp);
+        await sendOTPEmail(email, name, otp);
 
         res.status(201).json({
             success: true,
@@ -117,7 +117,19 @@ export const resendOTP = async (req, res, next) => {
         const otp = generateOTP();
         await OTP.deleteMany({ email });
         await OTP.create({ email, otp });
-        await sendOTPEmail(email, user.name, otp);
+        try {
+            await sendOTPEmail(email, user.name, otp);
+        } catch (error) {
+            if (process.env.NODE_ENV === "development") {
+                console.log(`OTP for ${email}: ${otp}`);
+            }
+            return res.status(error.statusCode || 503).json({
+                success: false,
+                message:
+                    error.message ||
+                    "Unable to send OTP email right now. Please try again shortly.",
+            });
+        }
 
         res.json({ success: true, message: "OTP resent successfully" });
     } catch (err) {
