@@ -69,18 +69,32 @@ export const useTripStore = create((set, get) => ({
     set({ balances: data.balances });
   },
 
-  addExpense: (expense) => {
-    set((state) => ({ expenses: [expense, ...state.expenses] }));
-  },
+  addExpense: (expense) =>
+    set((state) => {
+      const exists = state.expenses.some((e) => e._id === expense._id);
+
+      if (exists) {
+        return { expenses: state.expenses };
+      }
+
+      return {
+        expenses: [...state.expenses, expense],
+      };
+    }),
 
   // Real-time: expense added by another user
-  onExpenseAdded: (expense) => {
+  onExpenseAdded: (expense) =>
     set((state) => {
-      const exists = state.expenses.find((e) => e._id === expense._id);
-      if (exists) return {};
-      return { expenses: [expense, ...state.expenses] };
-    });
-  },
+      const exists = state.expenses.some((e) => e._id === expense._id);
+
+      if (exists) {
+        return { expenses: state.expenses };
+      }
+
+      return {
+        expenses: [...state.expenses, expense],
+      };
+    }),
 
   // Messages
   setMessages: (messages) => set({ messages }),
@@ -91,5 +105,12 @@ export const useTripStore = create((set, get) => ({
   // Itinerary
   setItinerary: (itinerary) => set({ itinerary }),
 
-  clearCurrentTrip: () => set({ currentTrip: null, expenses: [], balances: [], messages: [], itinerary: null }),
+  clearCurrentTrip: () =>
+    set({
+      currentTrip: null,
+      expenses: [],
+      balances: [],
+      messages: [],
+      itinerary: null,
+    }),
 }));

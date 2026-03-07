@@ -39,17 +39,31 @@ export default function ExpenseWidget({ tripId, trip }) {
   const handleAdd = async (e) => {
     e.preventDefault();
     setLoading(true);
+
     try {
-      const data = await expenseService.addExpense({
-        ...form, tripId, amount: parseFloat(form.amount),
+      await expenseService.addExpense({
+        ...form,
+        tripId,
+        amount: parseFloat(form.amount),
       });
-      addExpense(data.expense);
-      fetchBalances(tripId);
+
+      // Refresh expenses immediately
+      await fetchExpenses(tripId);
+      await fetchBalances(tripId);
+
       setShowAdd(false);
-      setForm({ title: "", amount: "", category: "other", splitType: "equal", notes: "" });
+
+      setForm({
+        title: "",
+        amount: "",
+        category: "other",
+        splitType: "equal",
+        notes: "",
+      });
     } catch (err) {
       alert(err.response?.data?.message || "Failed to add expense");
     }
+
     setLoading(false);
   };
 
