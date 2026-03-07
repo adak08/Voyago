@@ -18,6 +18,8 @@ const server = http.createServer(app);
 
 // Initialize Socket.io
 initSocket(server);
+console.log("ENV PATH:", path.resolve(__dirname, "../.env"));
+console.log("OPENAI KEY:", process.env.OPENAI_API_KEY);
 
 connectDB().then(() => {
     server.listen(PORT, () => {
