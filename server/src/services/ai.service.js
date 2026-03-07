@@ -1,9 +1,9 @@
 import OpenAI from "openai";
 
-const openai = process.env.OPENAI_API_KEY
-    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-    : null;
-// const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// const openai = process.env.OPENAI_API_KEY
+//     ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+//     : null;
+
 
 export const generateAIItinerary = async ({
     destination,
@@ -11,6 +11,11 @@ export const generateAIItinerary = async ({
     vibe,
     preferences,
 }) => {
+  // if(!openai){
+  //   throw new Error("Api Key is not visible");
+    
+  // }
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const prompt = `
 You are a travel expert. Generate a detailed ${days}-day itinerary for ${destination} with a ${vibe || "balanced"} vibe.
 ${preferences ? `Additional preferences: ${preferences}` : ""}
