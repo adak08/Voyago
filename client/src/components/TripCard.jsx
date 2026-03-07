@@ -124,7 +124,10 @@ export default function TripCard({ trip, onClick }) {
 
           {trip.budget && (
             <span className="text-xs text-gray-400 dark:text-gray-600 font-medium">
-              ₹{Number(trip.budget).toLocaleString()}
+              {trip.currency === "USD" && "$"}
+              {trip.currency === "EUR" && "€"}
+              {trip.currency === "INR" && "₹"}
+              {Number(trip.budget).toLocaleString()}
             </span>
           )}
         </div>
