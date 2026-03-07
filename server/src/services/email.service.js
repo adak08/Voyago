@@ -1,14 +1,64 @@
 import nodemailer from "nodemailer";
 
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT) || 587,
-    secure: false,
+const getSmtpConfig = () => {
+  const smtpUser = process.env.EMAIL_USER;
+  const smtpPassRaw = process.env.EMAIL_PASS || "";
+
+  const smtpHost = process.env.EMAIL_HOST;
+  const smtpPort = Number.parseInt(process.env.EMAIL_PORT || "587", 10);
+  const smtpSecure =
+    process.env.EMAIL_SECURE === "true" || smtpPort === 465;
+
+  return {
+    smtpHost,
+    smtpPort: Number.isNaN(smtpPort) ? 587 : smtpPort,
+    smtpSecure,
+    smtpUser,
+    smtpPass: smtpPassRaw.replace(/\s+/g, ""),
+  };
+};
+
+const createTransporter = () => {
+  const { smtpHost, smtpPort, smtpSecure, smtpUser, smtpPass } =
+    getSmtpConfig();
+
+  return nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
+      user: smtpUser,
+      pass: smtpPass,
     },
-});
+  });
+};
+
+const ensureEmailConfig = () => {
+  const { smtpHost, smtpUser, smtpPass } = getSmtpConfig();
+  if (smtpHost && smtpUser && smtpPass) return;
+
+  const err = new Error(
+    "Email service is not configured. Set EMAIL_HOST, EMAIL_USER and EMAIL_PASS in server/.env"
+  );
+  err.statusCode = 503;
+  throw err;
+};
+
+const sendMailWithErrorHandling = async (mailOptions) => {
+  ensureEmailConfig();
+  const transporter = createTransporter();
+
+  try {
+    await transporter.sendMail(mailOptions);
+  } catch (error) {
+    const err = new Error(
+      "Unable to send email right now. Please try again in a moment."
+    );
+    err.statusCode = 503;
+    err.cause = error;
+    throw err;
+  }
+};
 
 export const sendOTPEmail = async (email, name, otp) => {
     const mailOptions = {
@@ -36,7 +86,7 @@ export const sendOTPEmail = async (email, name, otp) => {
     </html>
     `,
     };
-    await transporter.sendMail(mailOptions);
+  await sendMailWithErrorHandling(mailOptions);
 };
 
 export const sendTripInviteEmail = async (
@@ -46,7 +96,9 @@ export const sendTripInviteEmail = async (
     inviteCode
 ) => {
     const mailOptions = {
-        from: process.env.EMAIL_FROM,
+      from:
+        process.env.EMAIL_FROM ||
+        "Smart Trip Planner <noreply@smarttrip.com>",
         to: email,
         subject: `${inviterName} invited you to "${tripTitle}"`,
         html: `
@@ -61,5 +113,5 @@ export const sendTripInviteEmail = async (
     </div>
     `,
     };
-    await transporter.sendMail(mailOptions);
+    await sendMailWithErrorHandling(mailOptions);
 };
