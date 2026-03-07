@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Plane, Mail, Lock, Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
+import GoogleAuthButton from "../components/GoogleAuthButton";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -16,6 +17,14 @@ export default function Login() {
     clearError();
     try {
       await login(form.email, form.password);
+      navigate("/dashboard");
+    } catch {}
+  };
+
+  const handleGoogleAuth = async (credential) => {
+    clearError();
+    try {
+      await useAuthStore.getState().googleLogin(credential);
       navigate("/dashboard");
     } catch {}
   };
@@ -83,7 +92,24 @@ export default function Login() {
                 </span>
               ) : "Sign in"}
             </button>
+
+            <div className="text-right">
+              <Link
+                to="/forgot-password"
+                className="text-xs text-primary-500 dark:text-primary-400 font-medium hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
           </form>
+
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-gray-200 dark:bg-surface-850" />
+            <span className="text-xs text-gray-400 dark:text-gray-600">OR</span>
+            <div className="h-px flex-1 bg-gray-200 dark:bg-surface-850" />
+          </div>
+
+          <GoogleAuthButton onCredential={handleGoogleAuth} disabled={loading} />
 
           <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
             No account?{" "}

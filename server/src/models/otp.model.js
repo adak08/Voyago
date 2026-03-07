@@ -10,6 +10,12 @@ const otpSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    purpose: {
+        type: String,
+        enum: ["signup", "password_reset"],
+        default: "signup",
+        required: true,
+    },
     expiresAt: {
         type: Date,
         required: true,
@@ -23,5 +29,6 @@ const otpSchema = new mongoose.Schema({
 
 // TTL index — auto-delete after expiry
 otpSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+otpSchema.index({ email: 1, purpose: 1, verified: 1 });
 
 export default mongoose.model("OTP", otpSchema);

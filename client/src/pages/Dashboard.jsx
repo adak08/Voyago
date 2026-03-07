@@ -63,7 +63,7 @@ export default function Dashboard() {
             <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-violet-600 rounded-xl flex items-center justify-center shadow-md shadow-primary-500/20">
               <Plane className="text-white" size={17} />
             </div>
-            <span className="font-extrabold text-lg text-gray-900 dark:text-white tracking-tight">TripSync</span>
+            <span className="font-extrabold text-lg text-gray-900 dark:text-white tracking-tight">Voyago</span>
           </div>
 
           <div className="flex items-center gap-2">

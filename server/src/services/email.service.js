@@ -89,6 +89,35 @@ export const sendOTPEmail = async (email, name, otp) => {
   await sendMailWithErrorHandling(mailOptions);
 };
 
+export const sendPasswordResetOTPEmail = async (email, name, otp) => {
+    const mailOptions = {
+        from:
+            process.env.EMAIL_FROM ||
+            "Smart Trip Planner <noreply@smarttrip.com>",
+        to: email,
+        subject: "Password reset OTP - Smart Trip Planner",
+        html: `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="UTF-8"><title>Password Reset</title></head>
+    <body style="font-family: Arial, sans-serif; background:#f4f4f4; padding:30px;">
+      <div style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <h2 style="color:#6366f1;text-align:center;">✈️ Smart Trip Planner</h2>
+        <h3 style="color:#1f2937;text-align:center;">Reset Your Password</h3>
+        <p style="color:#4b5563;">Hi ${name},</p>
+        <p style="color:#4b5563;">Use the OTP below to verify your password reset request. It expires in 10 minutes.</p>
+        <div style="text-align:center;margin:24px 0;">
+          <span style="background:#6366f1;color:#fff;font-size:32px;font-weight:bold;letter-spacing:8px;padding:16px 32px;border-radius:8px;display:inline-block;">${otp}</span>
+        </div>
+        <p style="color:#9ca3af;font-size:13px;text-align:center;">If you didn't request this, please ignore this email.</p>
+      </div>
+    </body>
+    </html>
+    `,
+    };
+    await sendMailWithErrorHandling(mailOptions);
+};
+
 export const sendTripInviteEmail = async (
     email,
     inviterName,
