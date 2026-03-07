@@ -6,6 +6,10 @@ import {
     resendOTP,
     login,
     googleAuth,
+    getGoogleClientId,
+    forgotPassword,
+    verifyResetOTP,
+    resetPassword,
     refreshToken,
     logout,
     getMe,
@@ -20,7 +24,11 @@ router.post("/register", authLimiter, register);
 router.post("/verify-otp", otpLimiter, verifyOTP);
 router.post("/resend-otp", otpLimiter, resendOTP);
 router.post("/login", authLimiter, login);
+router.get("/google-client-id", getGoogleClientId);
 router.post("/google", googleAuth);
+router.post("/forgot-password", otpLimiter, forgotPassword);
+router.post("/verify-reset-otp", otpLimiter, verifyResetOTP);
+router.post("/reset-password", authLimiter, resetPassword);
 router.post("/refresh", refreshToken);
 router.post("/logout", protect, logout);
 router.get("/me", protect, getMe);

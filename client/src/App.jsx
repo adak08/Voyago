@@ -7,6 +7,7 @@ import TripDetails from "./pages/TripDetails";
 import CreateTrip from "./pages/CreateTrip";
 import OTPVerification from "./pages/OTPVerification";
 import HomePage from "./pages/HomePage";
+import ForgotPassword from "./pages/ForgotPassword";
 
 const ProtectedRoute = ({ children }) => {
   const { token } = useAuthStore();
@@ -27,6 +28,7 @@ export default function App() {
         <Route path="/login" element={<GuestRoute><Login /></GuestRoute>} />
         <Route path="/register" element={<GuestRoute><Register /></GuestRoute>} />
         <Route path="/verify-otp" element={<GuestRoute><OTPVerification /></GuestRoute>} />
+        <Route path="/forgot-password" element={<GuestRoute><ForgotPassword /></GuestRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/trip/new" element={<ProtectedRoute><CreateTrip /></ProtectedRoute>} />
         <Route path="/trip/:id" element={<ProtectedRoute><TripDetails /></ProtectedRoute>} />
