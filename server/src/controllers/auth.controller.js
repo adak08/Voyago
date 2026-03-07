@@ -3,9 +3,28 @@ import { OAuth2Client } from "google-auth-library";
 import User from "../models/user.model.js";
 import OTP from "../models/otp.model.js";
 import { generateOTP } from "../utils/otpGenerator.js";
-import { sendOTPEmail } from "../services/email.service.js";
+import {
+    sendOTPEmail,
+    sendPasswordResetOTPEmail,
+} from "../services/email.service.js";
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+// @GET /api/auth/google-client-id
+export const getGoogleClientId = async (req, res, next) => {
+    try {
+        if (!process.env.GOOGLE_CLIENT_ID) {
+            return res.status(503).json({
+                success: false,
+                message: "Google auth is not configured on server",
+            });
+        }
+
+        res.json({ success: true, clientId: process.env.GOOGLE_CLIENT_ID });
+    } catch (err) {
+        next(err);
+    }
+};
 
 // Generate tokens
 const generateTokens = (userId, name) => {
@@ -41,8 +60,8 @@ export const register = async (req, res, next) => {
 
         // Generate and send OTP
         const otp = generateOTP();
-        await OTP.deleteMany({ email }); // clear old OTPs
-        await OTP.create({ email, otp });
+        await OTP.deleteMany({ email, purpose: "signup" }); // clear old OTPs
+        await OTP.create({ email, otp, purpose: "signup" });
         console.log(`OTP for ${email}: ${otp}`);
         await sendOTPEmail(email, name, otp);
 
@@ -62,7 +81,12 @@ export const verifyOTP = async (req, res, next) => {
     try {
         const { email, otp } = req.body;
 
-        const otpDoc = await OTP.findOne({ email, otp, verified: false });
+        const otpDoc = await OTP.findOne({
+            email,
+            otp,
+            verified: false,
+            purpose: "signup",
+        });
         if (!otpDoc) {
             return res
                 .status(400)
@@ -115,8 +139,8 @@ export const resendOTP = async (req, res, next) => {
                 .json({ success: false, message: "User not found" });
 
         const otp = generateOTP();
-        await OTP.deleteMany({ email });
-        await OTP.create({ email, otp });
+        await OTP.deleteMany({ email, purpose: "signup" });
+        await OTP.create({ email, otp, purpose: "signup" });
         try {
             await sendOTPEmail(email, user.name, otp);
         } catch (error) {
@@ -132,6 +156,165 @@ export const resendOTP = async (req, res, next) => {
         }
 
         res.json({ success: true, message: "OTP resent successfully" });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// @POST /api/auth/forgot-password
+export const forgotPassword = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+
+        // Keep response generic for better account privacy.
+        if (!user) {
+            return res.json({
+                success: true,
+                message:
+                    "If an account exists with this email, an OTP has been sent.",
+            });
+        }
+
+        const otp = generateOTP();
+        await OTP.deleteMany({ email, purpose: "password_reset" });
+        await OTP.create({ email, otp, purpose: "password_reset" });
+
+        try {
+            await sendPasswordResetOTPEmail(email, user.name, otp);
+        } catch (error) {
+            if (process.env.NODE_ENV === "development") {
+                console.log(`Password reset OTP for ${email}: ${otp}`);
+            }
+            return res.status(error.statusCode || 503).json({
+                success: false,
+                message:
+                    error.message ||
+                    "Unable to send reset OTP right now. Please try again shortly.",
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "OTP sent to your email for password reset",
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// @POST /api/auth/verify-reset-otp
+export const verifyResetOTP = async (req, res, next) => {
+    try {
+        const { email, otp } = req.body;
+
+        const otpDoc = await OTP.findOne({
+            email,
+            otp,
+            verified: false,
+            purpose: "password_reset",
+        });
+
+        if (!otpDoc) {
+            return res
+                .status(400)
+                .json({ success: false, message: "Invalid or expired OTP" });
+        }
+
+        if (otpDoc.expiresAt < new Date()) {
+            return res
+                .status(400)
+                .json({ success: false, message: "OTP expired" });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res
+                .status(404)
+                .json({ success: false, message: "User not found" });
+        }
+
+        await OTP.findByIdAndUpdate(otpDoc._id, { verified: true });
+
+        const resetToken = jwt.sign(
+            { email, purpose: "password_reset" },
+            process.env.JWT_RESET_SECRET || process.env.JWT_SECRET,
+            { expiresIn: "10m" }
+        );
+
+        res.json({
+            success: true,
+            message: "OTP verified successfully",
+            resetToken,
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// @POST /api/auth/reset-password
+export const resetPassword = async (req, res, next) => {
+    try {
+        const { resetToken, password, confirmPassword } = req.body;
+
+        if (!resetToken) {
+            return res
+                .status(400)
+                .json({ success: false, message: "Reset token is required" });
+        }
+
+        if (!password || password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: "Password must be at least 6 characters",
+            });
+        }
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({
+                success: false,
+                message: "Password and confirm password do not match",
+            });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(
+                resetToken,
+                process.env.JWT_RESET_SECRET || process.env.JWT_SECRET
+            );
+        } catch {
+            return res
+                .status(400)
+                .json({ success: false, message: "Invalid or expired reset token" });
+        }
+
+        if (decoded.purpose !== "password_reset") {
+            return res
+                .status(400)
+                .json({ success: false, message: "Invalid reset token" });
+        }
+
+        const user = await User.findOne({ email: decoded.email }).select(
+            "+password"
+        );
+        if (!user) {
+            return res
+                .status(404)
+                .json({ success: false, message: "User not found" });
+        }
+
+        user.password = password;
+        user.authProvider = user.authProvider || "local";
+        user.refreshToken = null;
+        await user.save();
+
+        await OTP.deleteMany({ email: decoded.email, purpose: "password_reset" });
+
+        res.json({
+            success: true,
+            message: "Password reset successful. Please login again.",
+        });
     } catch (err) {
         next(err);
     }

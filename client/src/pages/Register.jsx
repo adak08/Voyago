@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Plane, User, Mail, Lock, Sun, Moon } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { useThemeStore } from "../store/themeStore";
+import GoogleAuthButton from "../components/GoogleAuthButton";
 
 export default function Register() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
@@ -16,6 +17,14 @@ export default function Register() {
     try {
       await register(form.name, form.email, form.password);
       navigate("/verify-otp", { state: { email: form.email } });
+    } catch {}
+  };
+
+  const handleGoogleAuth = async (credential) => {
+    clearError();
+    try {
+      await useAuthStore.getState().googleLogin(credential);
+      navigate("/dashboard");
     } catch {}
   };
 
@@ -83,6 +92,14 @@ export default function Register() {
               ) : "Create account"}
             </button>
           </form>
+
+          <div className="my-5 flex items-center gap-3">
+            <div className="h-px flex-1 bg-gray-200 dark:bg-surface-850" />
+            <span className="text-xs text-gray-400 dark:text-gray-600">OR</span>
+            <div className="h-px flex-1 bg-gray-200 dark:bg-surface-850" />
+          </div>
+
+          <GoogleAuthButton onCredential={handleGoogleAuth} disabled={loading} />
 
           <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
             Already have an account?{" "}
