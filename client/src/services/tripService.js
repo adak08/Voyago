@@ -39,6 +39,12 @@ export const tripService = {
     const res = await api.get(`/trips/${tripId}/messages?page=${page}`);
     return res.data;
   },
+  uploadChatMedia: async (formData) => {
+    const res = await api.post(`/chat/upload`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return res.data;
+  },
   getItinerary: async (tripId) => {
     const res = await api.get(`/itinerary/${tripId}`);
     return res.data;

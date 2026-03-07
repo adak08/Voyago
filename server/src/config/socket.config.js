@@ -1,9 +1,15 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import Message from "../models/message.model.js";
+import Trip from "../models/trip.model.js";
 import { createNotification } from "../services/notification.service.js";
 
 let io;
+
+const isTripMember = async (tripId, userId) => {
+  const trip = await Trip.exists({ _id: tripId, "members.user": userId });
+  return Boolean(trip);
+};
 
 const initSocket = (server) => {
   io = new Server(server, {
@@ -43,17 +49,32 @@ const initSocket = (server) => {
     });
 
     // Send message
-    socket.on("send_message", async ({ tripId, message }) => {
+    socket.on("send_message", async ({ tripId, message, type = "text", mediaUrl, fileName }, callback) => {
       try {
-        const newMessage = await Message.create({
+        const member = await isTripMember(tripId, socket.userId);
+        if (!member) {
+          socket.emit("error", { message: "Not a trip member" });
+          return;
+        }
+
+        const payload = {
           sender: socket.userId,
           tripId,
+          type,
           message,
+          mediaUrl,
+          fileName,
+          readBy: [socket.userId],
+        };
+
+        const newMessage = await Message.create({
+          ...payload,
         });
 
         const populated = await newMessage.populate("sender", "name avatar");
 
         io.to(tripId).emit("receive_message", populated);
+        if (typeof callback === "function") callback({ success: true, message: populated });
 
         // Notify other trip members
         await createNotification({
@@ -64,6 +85,7 @@ const initSocket = (server) => {
         });
 
       } catch (err) {
+        if (typeof callback === "function") callback({ success: false, message: "Failed to send message" });
         socket.emit("error", { message: "Failed to send message" });
       }
     });
@@ -71,10 +93,80 @@ const initSocket = (server) => {
     // Typing indicator
     socket.on("typing", ({ tripId, isTyping }) => {
       socket.to(tripId).emit("user_typing", {
+        tripId,
         userId: socket.userId,
         name: socket.userName,
         isTyping,
       });
+    });
+
+    // Mark messages as seen for current user
+    socket.on("message_seen", async ({ tripId }) => {
+      try {
+        const member = await isTripMember(tripId, socket.userId);
+        if (!member) return;
+
+        await Message.updateMany(
+          { tripId, readBy: { $ne: socket.userId } },
+          { $addToSet: { readBy: socket.userId } }
+        );
+
+        io.to(tripId).emit("message_seen", {
+          tripId,
+          userId: socket.userId,
+        });
+      } catch {
+        socket.emit("error", { message: "Failed to update seen status" });
+      }
+    });
+
+    // Add/update reaction on a message
+    socket.on("add_reaction", async ({ tripId, messageId, emoji }) => {
+      try {
+        const member = await isTripMember(tripId, socket.userId);
+        if (!member) return;
+
+        const message = await Message.findOne({ _id: messageId, tripId });
+        if (!message) return;
+
+        message.reactions = (message.reactions || []).filter(
+          (reaction) => reaction.userId.toString() !== socket.userId
+        );
+        message.reactions.push({ userId: socket.userId, emoji });
+        await message.save();
+
+        io.to(tripId).emit("reaction_updated", {
+          tripId,
+          messageId,
+          reactions: message.reactions,
+        });
+      } catch {
+        socket.emit("error", { message: "Failed to add reaction" });
+      }
+    });
+
+    // Remove reaction by current user
+    socket.on("remove_reaction", async ({ tripId, messageId }) => {
+      try {
+        const member = await isTripMember(tripId, socket.userId);
+        if (!member) return;
+
+        const message = await Message.findOne({ _id: messageId, tripId });
+        if (!message) return;
+
+        message.reactions = (message.reactions || []).filter(
+          (reaction) => reaction.userId.toString() !== socket.userId
+        );
+        await message.save();
+
+        io.to(tripId).emit("reaction_updated", {
+          tripId,
+          messageId,
+          reactions: message.reactions,
+        });
+      } catch {
+        socket.emit("error", { message: "Failed to remove reaction" });
+      }
     });
 
     // Expense added - real-time sync
