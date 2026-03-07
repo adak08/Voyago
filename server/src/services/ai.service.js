@@ -1,9 +1,5 @@
-import OpenAI from "openai";
-
-// const openai = process.env.OPENAI_API_KEY
-//     ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-//     : null;
-
+// 1. Notice the new package import
+import { GoogleGenAI } from "@google/genai";
 
 export const generateAIItinerary = async ({
     destination,
@@ -11,52 +7,66 @@ export const generateAIItinerary = async ({
     vibe,
     preferences,
 }) => {
-  // if(!openai){
-  //   throw new Error("Api Key is not visible");
-    
-  // }
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const prompt = `
-You are a travel expert. Generate a detailed ${days}-day itinerary for ${destination} with a ${vibe || "balanced"} vibe.
-${preferences ? `Additional preferences: ${preferences}` : ""}
+    try {
+        if (!process.env.GEMINI_API_KEY) {
+            throw new Error("Gemini API key not configured");
+        }
 
-Return ONLY a JSON array with this exact structure:
-[
-  {
-    "day": 1,
-    "title": "Day title",
-    "activities": [
-      {
-        "time": "9:00 AM",
-        "title": "Activity name",
-        "description": "Brief description",
-        "location": "Specific location",
-        "category": "food|travel|activity|accommodation|other",
-        "cost": 500
-      }
-    ]
-  }
-]
+        // 2. The new SDK initializes slightly differently
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-Include 4-6 activities per day. Be specific with locations and times. Include estimated costs in INR.
+        const prompt = `
+You are a travel expert.
+
+Generate a detailed ${days}-day itinerary for ${destination}.
+
+Travel vibe: ${vibe || "balanced"}
+Preferences: ${preferences || "none"}
+
+Return ONLY valid JSON strictly matching this schema:
+
+{
+  "days": [
+    {
+      "day": 1,
+      "title": "Day title",
+      "activities": [
+        {
+          "time": "9:00 AM",
+          "title": "Activity name",
+          "description": "Brief description",
+          "location": "Specific location",
+          "category": "food|travel|activity|accommodation|other",
+          "cost": 500
+        }
+      ]
+    }
+  ]
+}
+
+Include 4-6 activities per day.
+Use realistic places and estimated costs in INR.
 `;
 
-    const response = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.7,
-        max_tokens: 3000,
-        response_format: { type: "json_object" },
-    });
+        // 3. The generation method now sits under "ai.models"
+        // and configuration options are passed inside a "config" object
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+            },
+        });
 
-    let content = response.choices[0].message.content;
+        // 4. IMPORTANT: In the new SDK, 'text' is a property, NOT a method!
+        // (Old SDK: result.response.text(), New SDK: response.text)
+        const text = response.text;
 
-    // Parse the response
-    const parsed = JSON.parse(content);
-    // Handle both {itinerary: [...]} and [...] formats
-    const itinerary = Array.isArray(parsed)
-        ? parsed
-        : parsed.itinerary || parsed.days || [];
+        const parsed = JSON.parse(text);
 
-    return itinerary;
+        return parsed.days || [];
+    } catch (error) {
+        console.error("Gemini AI Error:", error);
+        throw new Error("Failed to generate itinerary using Gemini AI");
+    }
 };
