@@ -53,9 +53,30 @@ export const useTripStore = create((set, get) => ({
     }
   },
 
+  updateTrip: async (tripId, updates) => {
+    const res = await tripService.updateTrip(tripId, updates);
+
+    set((state) => ({
+      trips: state.trips.map((t) => (t._id === tripId ? res.trip : t)),
+    }));
+
+    return res.trip;
+  },
+
+  deleteTrip: async (tripId) => {
+    await tripService.deleteTrip(tripId);
+
+    set((state) => ({
+      trips: state.trips.filter((t) => t._id !== tripId),
+    }));
+  },
+
   leaveTrip: async (tripId) => {
     await tripService.leaveTrip(tripId);
-    set((state) => ({ trips: state.trips.filter((t) => t._id !== tripId) }));
+
+    set((state) => ({
+      trips: state.trips.filter((t) => t._id !== tripId),
+    }));
   },
 
   // Expenses
@@ -111,7 +132,7 @@ export const useTripStore = create((set, get) => ({
 
       const currentTripMatches = state.currentTrip?._id === tripId;
       const photoExists = state.currentTrip?.photos?.some(
-        (p) => String(p._id) === String(photo._id)
+        (p) => String(p._id) === String(photo._id),
       );
 
       const nextCurrentTrip = currentTripMatches
@@ -128,7 +149,7 @@ export const useTripStore = create((set, get) => ({
         if (trip._id !== tripId) return trip;
 
         const exists = (trip.photos || []).some(
-          (p) => String(p._id) === String(photo._id)
+          (p) => String(p._id) === String(photo._id),
         );
 
         return {
