@@ -53,4 +53,8 @@ export const authService = {
     const res = await api.get("/auth/me");
     return res.data;
   },
+  updateProfile: async (data) => {
+    const res = await api.patch("/auth/update-profile", data);
+    return res.data;
+  },
 };

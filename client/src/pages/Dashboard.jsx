@@ -7,6 +7,7 @@ import { useSocketStore } from "../store/socketStore";
 import { useThemeStore } from "../store/themeStore";
 import TripCard from "../components/TripCard";
 import NotificationBell from "../components/NotificationBell";
+import ProfileCard from "../components/ProfileCard";
 
 export default function Dashboard() {
   const { user, logout, token } = useAuthStore();
@@ -19,6 +20,7 @@ export default function Dashboard() {
   const [joining, setJoining] = useState(false);
   const [joinError, setJoinError] = useState("");
   const [showJoin, setShowJoin] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => {
     fetchTrips();
@@ -63,7 +65,9 @@ export default function Dashboard() {
             <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-violet-600 rounded-xl flex items-center justify-center shadow-md shadow-primary-500/20">
               <Plane className="text-white" size={17} />
             </div>
-            <span className="font-extrabold text-lg text-gray-900 dark:text-white tracking-tight">Voyago</span>
+            <span className="font-extrabold text-lg text-gray-900 dark:text-white tracking-tight">
+              Voyago
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -73,14 +77,32 @@ export default function Dashboard() {
             </button>
             {/* User avatar */}
             <div className="flex items-center gap-2 ml-1 pl-2 border-l border-gray-200 dark:border-surface-850">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center font-bold text-white text-sm">
-                {user?.name?.[0]?.toUpperCase()}
+              <div className="relative">
+                <button
+                  onClick={() => setProfileOpen(!profileOpen)}
+                  className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center font-bold text-white text-sm"
+                >
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    user?.name?.[0]?.toUpperCase()
+                  )}
+                </button>
+
+                <ProfileCard open={profileOpen} setOpen={setProfileOpen} />
               </div>
-              <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300">{user?.name}</span>
+              <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300">
+                {user?.name}
+              </span>
             </div>
-            <button onClick={handleLogout}
+            <button
+              onClick={handleLogout}
               className="btn-ghost ml-1 p-2 text-gray-400 hover:text-red-500 dark:hover:text-red-400"
-              title="Logout">
+              title="Logout"
+            >
               <LogOut size={17} />
             </button>
           </div>
@@ -95,14 +117,21 @@ export default function Dashboard() {
               My Trips
             </h1>
             <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-              {trips.length} trip{trips.length !== 1 ? "s" : ""} • Hey, {user?.name?.split(" ")[0]} 👋
+              {trips.length} trip{trips.length !== 1 ? "s" : ""} • Hey,{" "}
+              {user?.name?.split(" ")[0]} 👋
             </p>
           </div>
           <div className="flex gap-2.5">
-            <button onClick={() => setShowJoin(!showJoin)} className="btn-secondary text-sm">
+            <button
+              onClick={() => setShowJoin(!showJoin)}
+              className="btn-secondary text-sm"
+            >
               <Users size={15} /> Join Trip
             </button>
-            <button onClick={() => navigate("/trip/new")} className="btn-primary text-sm">
+            <button
+              onClick={() => navigate("/trip/new")}
+              className="btn-primary text-sm"
+            >
               <Plus size={15} /> New Trip
             </button>
           </div>
@@ -111,26 +140,51 @@ export default function Dashboard() {
         {/* ─── Join Trip form ─── */}
         {showJoin && (
           <div className="card p-4 mb-6 border border-primary-100 dark:border-primary-900/40 bg-primary-50/50 dark:bg-primary-900/10 animate-fade-in">
-            <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-wide mb-3">Enter Invite Code</p>
+            <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-wide mb-3">
+              Enter Invite Code
+            </p>
             <form onSubmit={handleJoin} className="flex gap-3">
-              <input type="text" className="input-field uppercase tracking-widest font-mono"
+              <input
+                type="text"
+                className="input-field uppercase tracking-widest font-mono"
                 placeholder="AB12CD34"
-                value={joinCode} onChange={(e) => setJoinCode(e.target.value)} required />
-              <button type="submit" disabled={joining} className="btn-primary whitespace-nowrap text-sm">
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value)}
+                required
+              />
+              <button
+                type="submit"
+                disabled={joining}
+                className="btn-primary whitespace-nowrap text-sm"
+              >
                 {joining ? (
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : "Join"}
+                ) : (
+                  "Join"
+                )}
               </button>
             </form>
-            {joinError && <p className="text-red-500 dark:text-red-400 text-sm mt-2">{joinError}</p>}
+            {joinError && (
+              <p className="text-red-500 dark:text-red-400 text-sm mt-2">
+                {joinError}
+              </p>
+            )}
           </div>
         )}
 
         {/* ─── Search ─── */}
         <div className="relative mb-8">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-600" size={16} />
-          <input type="text" className="input-field pl-10" placeholder="Search trips by name or destination…"
-            value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Search
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-600"
+            size={16}
+          />
+          <input
+            type="text"
+            className="input-field pl-10"
+            placeholder="Search trips by name or destination…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
 
         {/* ─── Content ─── */}
@@ -152,21 +206,36 @@ export default function Dashboard() {
             <div className="w-20 h-20 bg-gray-100 dark:bg-surface-850 rounded-2xl flex items-center justify-center mx-auto mb-5">
               <MapPin className="text-gray-300 dark:text-gray-600" size={36} />
             </div>
-            <h3 className="text-xl font-bold text-gray-500 dark:text-gray-400 mb-2">No trips yet</h3>
-            <p className="text-gray-400 dark:text-gray-600 text-sm mb-6">Create your first trip or join one with a code</p>
-            <button onClick={() => navigate("/trip/new")} className="btn-primary text-sm">
+            <h3 className="text-xl font-bold text-gray-500 dark:text-gray-400 mb-2">
+              No trips yet
+            </h3>
+            <p className="text-gray-400 dark:text-gray-600 text-sm mb-6">
+              Create your first trip or join one with a code
+            </p>
+            <button
+              onClick={() => navigate("/trip/new")}
+              className="btn-primary text-sm"
+            >
               <Plus size={15} /> Plan your first trip
             </button>
           </div>
         ) : (
           <>
-            {ongoing.length   > 0 && <Section title="🌍 Ongoing"   trips={ongoing} />}
-            {upcoming.length  > 0 && <Section title="📅 Upcoming"  trips={upcoming} />}
-            {completed.length > 0 && <Section title="✅ Completed" trips={completed} />}
+            {ongoing.length > 0 && (
+              <Section title="🌍 Ongoing" trips={ongoing} />
+            )}
+            {upcoming.length > 0 && (
+              <Section title="📅 Upcoming" trips={upcoming} />
+            )}
+            {completed.length > 0 && (
+              <Section title="✅ Completed" trips={completed} />
+            )}
             {filtered.length === 0 && search && (
               <div className="text-center py-16 text-gray-400 dark:text-gray-600">
                 <Search className="mx-auto mb-3" size={32} />
-                <p>No trips matching "<strong>{search}</strong>"</p>
+                <p>
+                  No trips matching "<strong>{search}</strong>"
+                </p>
               </div>
             )}
           </>
