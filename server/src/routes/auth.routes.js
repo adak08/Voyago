@@ -13,6 +13,7 @@ import {
     refreshToken,
     logout,
     getMe,
+    updateProfile,
 } from "../controllers/auth.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
 import {
@@ -32,5 +33,6 @@ router.post("/reset-password", authLimiter, resetPassword);
 router.post("/refresh", refreshToken);
 router.post("/logout", protect, logout);
 router.get("/me", protect, getMe);
+router.patch("/update-profile", protect, updateProfile);
 
 export default router;
