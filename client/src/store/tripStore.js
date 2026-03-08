@@ -105,6 +105,45 @@ export const useTripStore = create((set, get) => ({
   // Itinerary
   setItinerary: (itinerary) => set({ itinerary }),
 
+  appendTripPhoto: ({ tripId, photo, coverImage }) =>
+    set((state) => {
+      if (!tripId || !photo) return {};
+
+      const currentTripMatches = state.currentTrip?._id === tripId;
+      const photoExists = state.currentTrip?.photos?.some(
+        (p) => String(p._id) === String(photo._id)
+      );
+
+      const nextCurrentTrip = currentTripMatches
+        ? {
+            ...state.currentTrip,
+            coverImage: coverImage || state.currentTrip.coverImage,
+            photos: photoExists
+              ? state.currentTrip.photos
+              : [...(state.currentTrip.photos || []), photo],
+          }
+        : state.currentTrip;
+
+      const nextTrips = state.trips.map((trip) => {
+        if (trip._id !== tripId) return trip;
+
+        const exists = (trip.photos || []).some(
+          (p) => String(p._id) === String(photo._id)
+        );
+
+        return {
+          ...trip,
+          coverImage: coverImage || trip.coverImage,
+          photos: exists ? trip.photos || [] : [...(trip.photos || []), photo],
+        };
+      });
+
+      return {
+        currentTrip: nextCurrentTrip,
+        trips: nextTrips,
+      };
+    }),
+
   clearCurrentTrip: () =>
     set({
       currentTrip: null,

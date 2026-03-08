@@ -5,6 +5,7 @@ import { generateInviteCode } from "../utils/generateInviteCode.js";
 import { createNotification } from "../services/notification.service.js";
 import { getIO } from "../config/socket.config.js";
 import { cloudinary } from "../config/cloudinary.config.js";
+import { Readable } from "stream";
 
 // @POST /api/trips - Create trip
 export const createTrip = async (req, res, next) => {
@@ -180,10 +181,14 @@ export const deleteTrip = async (req, res, next) => {
   }
 };
 
-// @POST /api/trips/:id/upload - Upload trip photo
 export const uploadTripPhoto = async (req, res, next) => {
   try {
-    if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded" });
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded — check that the form field name is 'photo' and use JPG/PNG/WEBP/GIF/HEIC/HEIF/AVIF",
+      });
+    }
 
     const trip = await Trip.findById(req.params.id);
     if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
@@ -191,16 +196,67 @@ export const uploadTripPhoto = async (req, res, next) => {
     const isMember = trip.members.some((m) => m.user.toString() === req.user.id);
     if (!isMember) return res.status(403).json({ success: false, message: "Not a member" });
 
-    const photoUrl = req.file.path;
-    trip.photos.push({ url: photoUrl, uploadedBy: req.user.id });
+    const uploaded = await uploadTripImageToCloudinary(req.file);
+    const photoUrl = uploaded?.secure_url || uploaded?.url;
+
+    if (!photoUrl) {
+      return res.status(500).json({
+        success: false,
+        message: "Cloudinary upload succeeded but returned no URL",
+      });
+    }
+
+    const newPhoto = {
+      url: photoUrl,
+      uploadedBy: req.user.id,
+      uploadedAt: new Date(),
+    };
+
+    trip.photos.push(newPhoto);
+
     if (!trip.coverImage) trip.coverImage = photoUrl;
     await trip.save();
+
+    // Keep all trip members in sync without requiring manual refresh.
+    try {
+      getIO().to(trip._id.toString()).emit("trip_photo_uploaded", {
+        tripId: trip._id.toString(),
+        photo: {
+          _id: trip.photos[trip.photos.length - 1]?._id,
+          ...newPhoto,
+        },
+        coverImage: trip.coverImage,
+      });
+    } catch {}
 
     res.json({ success: true, url: photoUrl, trip });
   } catch (err) {
     next(err);
   }
 };
+
+const uploadTripImageToCloudinary = (file) =>
+  new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: "smart-trip-planner/trips",
+        resource_type: "image",
+        transformation: [{ width: 1200, height: 900, crop: "limit", quality: "auto:good" }],
+      },
+      (error, result) => {
+        if (error) {
+          const err = new Error(error.message || "Cloudinary upload failed");
+          err.statusCode = 502;
+          reject(err);
+          return;
+        }
+
+        resolve(result);
+      }
+    );
+
+    Readable.from(file.buffer).pipe(uploadStream);
+  });
 
 // @GET /api/trips/invite/:code - Get trip info by invite code (preview)
 export const getTripByInviteCode = async (req, res, next) => {

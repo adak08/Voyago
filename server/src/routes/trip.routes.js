@@ -6,7 +6,7 @@ import {
 } from "../controllers/trip.controller.js";
 import { getMessages, sendMessage } from "../controllers/chat.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
-import { upload } from "../config/cloudinary.config.js";
+import { tripUpload } from "../config/cloudinary.config.js";
 
 router.use(protect);
 
@@ -15,7 +15,15 @@ router.post("/join", joinTrip);
 router.get("/invite/:code", getTripByInviteCode);
 router.route("/:id").get(getTripById).put(updateTrip).delete(deleteTrip);
 router.delete("/:id/leave", leaveTrip);
-router.post("/:id/upload", upload.single("photo"), uploadTripPhoto);
+
+const tripUploadMiddleware = (req, res, next) => {
+  tripUpload.single("photo")(req, res, (err) => {
+    if (err) return next(err);
+    next();
+  });
+};
+
+router.post("/:id/upload", tripUploadMiddleware, uploadTripPhoto);
 
 // Chat routes nested under trips
 router.get("/:tripId/messages", getMessages);
