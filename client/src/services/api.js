@@ -3,7 +3,18 @@ import axios from "axios";
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "/api",
   timeout: 30000,
-  headers: { "Content-Type": "application/json" },
+});
+
+api.interceptors.request.use((config) => {
+  // Let the browser set multipart boundary for FormData requests.
+  if (config.data instanceof FormData) {
+    if (config.headers) {
+      delete config.headers["Content-Type"];
+      delete config.headers["content-type"];
+    }
+  }
+
+  return config;
 });
 
 // Attach token from localStorage on startup

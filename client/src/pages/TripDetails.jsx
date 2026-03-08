@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Map, DollarSign, MessageCircle, Users, Share2, Copy, Calendar, Clock, Plane } from "lucide-react";
+import { ArrowLeft, Map, DollarSign, MessageCircle, Users, Share2, Copy, Calendar, Clock, Plane, Camera } from "lucide-react";
 import { useTripStore } from "../store/tripStore";
 import { useAuthStore } from "../store/authStore";
 import { useSocket } from "../hooks/useSocket";
 import ItineraryBoard from "../components/ItineraryBoard";
 import ExpenseWidget from "../components/ExpenseWidget";
 import ChatBox from "../components/ChatBox";
+import PhotoGallery from "../components/PhotoGallery";
 import { format } from "date-fns";
 
 const TABS = [
   { id: "itinerary", label: "Itinerary",  icon: Map },
   { id: "expenses",  label: "Expenses",   icon: DollarSign },
   { id: "chat",      label: "Chat",       icon: MessageCircle },
+  { id: "photos",    label: "Photos",     icon: Camera },
   { id: "members",   label: "Members",    icon: Users },
 ];
 
@@ -120,7 +122,14 @@ export default function TripDetails() {
             {TABS.map(({ id: tabId, label, icon: Icon }) => (
               <button key={tabId} onClick={() => setActiveTab(tabId)}
                 className={activeTab === tabId ? "tab-btn-active" : "tab-btn-inactive"}>
-                <Icon size={15} /> {label}
+                <Icon size={15} />
+                {label}
+                {/* Photo count badge */}
+                {tabId === "photos" && currentTrip.photos?.length > 0 && (
+                  <span className="ml-1 bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-400 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    {currentTrip.photos.length}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -132,6 +141,7 @@ export default function TripDetails() {
         {activeTab === "itinerary" && <ItineraryBoard tripId={id} trip={currentTrip} />}
         {activeTab === "expenses"  && <ExpenseWidget  tripId={id} trip={currentTrip} />}
         {activeTab === "chat"      && <ChatBox tripId={id} />}
+        {activeTab === "photos"    && <PhotoGallery tripId={id} trip={currentTrip} />}
         {activeTab === "members"   && <MembersTab trip={currentTrip} isAdmin={isAdmin} userId={user?.id} />}
       </div>
     </div>

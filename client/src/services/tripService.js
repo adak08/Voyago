@@ -30,9 +30,7 @@ export const tripService = {
     return res.data;
   },
   uploadPhoto: async (id, formData) => {
-    const res = await api.post(`/trips/${id}/upload`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    const res = await api.post(`/trips/${id}/upload`, formData);
     return res.data;
   },
   getMessages: async (tripId, page = 1) => {
@@ -40,9 +38,7 @@ export const tripService = {
     return res.data;
   },
   uploadChatMedia: async (formData) => {
-    const res = await api.post(`/chat/upload`, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
+    const res = await api.post(`/chat/upload`, formData);
     return res.data;
   },
   getItinerary: async (tripId) => {
