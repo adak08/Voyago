@@ -125,7 +125,7 @@ export default function HomePage() {
             <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary-500/25">
               <Plane className="text-white" size={17} />
             </div>
-            <span className="font-extrabold text-lg text-gray-900 dark:text-white tracking-tight">TripSync</span>
+            <span className="font-extrabold text-lg text-gray-900 dark:text-white tracking-tight">Voyago</span>
           </div>
 
           {/* Desktop links */}
@@ -422,10 +422,10 @@ export default function HomePage() {
             <div className="w-7 h-7 bg-gradient-to-br from-primary-500 to-violet-600 rounded-lg flex items-center justify-center">
               <Plane className="text-white" size={13} />
             </div>
-            <span className="font-bold text-gray-800 dark:text-gray-200">TripSync</span>
+            <span className="font-bold text-gray-800 dark:text-gray-200">Voyago</span>
           </div>
           <p className="text-xs text-gray-400 dark:text-gray-600">
-            © 2025 TripSync. Built for travellers, by travellers.
+            © 2025 Voyago. Built for travellers, by travellers.
           </p>
           <div className="flex items-center gap-4 text-xs text-gray-400 dark:text-gray-600">
             <a href="#features" className="hover:text-primary-500 transition-colors">Features</a>

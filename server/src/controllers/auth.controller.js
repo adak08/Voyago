@@ -472,3 +472,35 @@ export const getMe = async (req, res, next) => {
         next(err);
     }
 };
+
+// @PATCH /api/auth/update-profile
+export const updateProfile = async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    let avatar = req.body.avatar;
+
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (name) user.name = name;
+    if (avatar) user.avatar = avatar;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
