@@ -1,6 +1,5 @@
 import { fetchWeather } from "../agents/weatherAgent.js";
 import { fetchRoute } from "../agents/mapsAgent.js";
-import { fetchEvents } from "../agents/eventsAgent.js";
 import { estimateBudget } from "../agents/budgetAgent.js";
 import { generateItinerary } from "../agents/itineraryAgent.js";
 
@@ -63,20 +62,16 @@ export const planTrip = async ({
   );
 
   // ─── Phase 1: Run data agents in parallel ──────────────────────────────────
-  const [weather, route, events, budget_data] = await Promise.all([
+  const [weather, route, budget_data] = await Promise.all([
     safe(
       fetchWeather(destination, safeDays),
       { available: false, destination, forecast: [], summary: "Weather unavailable." }
     ),
     safe(
       origin
-        ? fetchRoute(origin, destination)
+        ? fetchRoute({ origin, destination })
         : Promise.resolve({ available: false, summary: "No origin provided." }),
       { available: false, origin, destination, summary: "Route unavailable." }
-    ),
-    safe(
-      fetchEvents(destination, resolvedStart, resolvedEnd),
-      { available: false, destination, events: [], count: 0, summary: "Events unavailable." }
     ),
     safe(
       estimateBudget({
@@ -97,7 +92,7 @@ export const planTrip = async ({
   console.log(
     `[Orchestrator] Data agents complete — ` +
     `weather:${weather.available} route:${route.available} ` +
-    `events:${events.available} budget:${budget_data.available}`
+    `budget:${budget_data.available}`
   );
 
   // ─── Phase 2: Itinerary generation (Gemini) ────────────────────────────────
@@ -110,7 +105,6 @@ export const planTrip = async ({
       preferences,
       people: safePeople,
       weather,
-      events,
       route,
       budget: budget_data,
     }),
@@ -127,14 +121,13 @@ export const planTrip = async ({
   );
 
   console.log(
-    `[Orchestrator] Itinerary generation complete — available:${itinerary.available}`
+    `[Orchestrator] Itinerary generation complete — available:${itinerary.available} source:${itinerary.generatedByAI ? "ai" : "fallback"}`
   );
 
   // ─── Phase 3: Assemble final response ─────────────────────────────────────
   const agentStatus = {
     weather: weather.available ? "ok" : "unavailable",
     route: route.available ? "ok" : "unavailable",
-    events: events.available ? "ok" : "unavailable",
     budget: budget_data.available ? "ok" : "unavailable",
     itinerary: itinerary.available ? "ok" : "unavailable",
   };
@@ -157,7 +150,6 @@ export const planTrip = async ({
     meta,
     weather,
     route,
-    events,
     budget: budget_data,
     itinerary,
     agentStatus,

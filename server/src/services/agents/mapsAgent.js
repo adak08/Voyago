@@ -26,6 +26,7 @@ const geocode = async (placeName) => {
 
 // ─── Format minutes → human readable duration ────────────────────────────────
 const formatDuration = (minutes) => {
+  if (!Number.isFinite(minutes)) return "Unavailable";
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return `${m} min${m !== 1 ? "s" : ""}`;
@@ -65,7 +66,32 @@ const getAlternativeModes = (distanceKm) => {
 };
 
 // ─── Main Maps Agent ──────────────────────────────────────────────────────────
-export const mapsAgent = async ({ origin, destination }) => {
+export const fetchRoute = async (inputOrOrigin, maybeDestination) => {
+  // Backward-compatible signature support:
+  // - fetchRoute({ origin, destination })
+  // - fetchRoute(origin, destination)
+  const origin =
+    typeof inputOrOrigin === "object" && inputOrOrigin !== null
+      ? inputOrOrigin.origin
+      : inputOrOrigin;
+  const destination =
+    typeof inputOrOrigin === "object" && inputOrOrigin !== null
+      ? inputOrOrigin.destination
+      : maybeDestination;
+
+  if (!origin || !destination) {
+    return {
+      available: false,
+      source: "openrouteservice",
+      message: "Route lookup requires both origin and destination",
+      origin: origin || null,
+      destination: destination || null,
+      distance: "Unavailable",
+      duration: "Unavailable",
+      mode: "Unavailable",
+    };
+  }
+
   // Graceful degradation if API key is missing
   if (!process.env.ORS_API_KEY) {
     console.warn("[mapsAgent] ORS_API_KEY not set — skipping route lookup");
@@ -120,10 +146,19 @@ export const mapsAgent = async ({ origin, destination }) => {
     }
 
     // Step 3 — Parse results
-    const distanceKm   = Math.round(summary.distance / 1000);  // metres → km
-    const durationMin  = Math.round(summary.duration / 60);    // seconds → mins
+    const distanceKm = Number.isFinite(summary.distance)
+      ? Math.round(summary.distance / 1000)
+      : NaN;
+    const durationMin = Number.isFinite(summary.duration)
+      ? Math.round(summary.duration / 60)
+      : NaN;
+
+    if (!Number.isFinite(distanceKm) || !Number.isFinite(durationMin)) {
+      throw new Error("Route summary contained invalid distance/duration");
+    }
+
     const durationText = formatDuration(durationMin);
-    const mode         = recommendMode(distanceKm);
+    const mode = recommendMode(distanceKm);
 
     console.log(`[mapsAgent] Route found — ${distanceKm}km, ${durationText}, mode: ${mode}`);
 

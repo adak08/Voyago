@@ -94,7 +94,6 @@ export const agentStatusHandler = async (_req, res, next) => {
       gemini: !!process.env.GEMINI_API_KEY,
       openweather: !!process.env.OPENWEATHER_KEY,
       google_maps: !!process.env.GOOGLE_MAP_KEY,
-      ticketmaster: !!process.env.EVENTS_API_KEY,
     };
 
     const allReady = Object.values(status).every(Boolean);

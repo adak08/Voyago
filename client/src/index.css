@@ -96,6 +96,14 @@
            text-sm;
   }
 
+    /* Form label */
+  .label-text {
+    @apply block text-xs font-semibold text-gray-600 dark:text-gray-400
+           uppercase tracking-wide mb-1.5;
+  }
+
+
+
   /* Cards */
   .card {
     @apply bg-white dark:bg-[var(--card)]

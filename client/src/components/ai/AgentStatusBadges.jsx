@@ -3,7 +3,6 @@ import { CheckCircle, AlertCircle, Wifi } from "lucide-react";
 const AGENT_META = {
   weather:   { label: "Weather",   emoji: "🌤️" },
   route:     { label: "Route",     emoji: "🗺️" },
-  events:    { label: "Events",    emoji: "🎪" },
   budget:    { label: "Budget",    emoji: "💰" },
   itinerary: { label: "Itinerary", emoji: "📋" },
 };
