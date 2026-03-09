@@ -12,6 +12,7 @@ import RouteCard from "../components/ai/RouteCard";
 import BudgetBreakdown from "../components/ai/BudgetBreakdown";
 import AIItineraryBoard from "../components/ai/AIItineraryBoard";
 import AgentStatusBadges from "../components/ai/AgentStatusBadges";
+import api from "../services/api";
 
 // ─── Vibe options ─────────────────────────────────────────────────────────────
 const VIBES = [
@@ -66,6 +67,7 @@ export default function AIPlannerPage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
   const [activeTab, setActiveTab] = useState("itinerary");
+  const [savingTrip, setSavingTrip] = useState(false);
 
   // ── Form helpers ────────────────────────────────────────────────────────────
   const set = (key) => (e) =>
@@ -120,6 +122,51 @@ export default function AIPlannerPage() {
   const handleReset = () => {
     setResult(null);
     setError("");
+  };
+
+  const handleSaveTrip = async () => {
+    if (!result) return;
+
+    setSavingTrip(true);
+    setError("");
+
+    try {
+      const meta = {
+        origin: result.meta?.origin || "",
+        destination: result.meta?.destination || "",
+        startDate: result.meta?.start_date || null,
+        endDate: result.meta?.end_date || null,
+        days: Number(result.meta?.days) || 0,
+        people: Number(result.meta?.people) || 1,
+        vibe: result.meta?.vibe || "balanced",
+        budget: Number(result.budget?.breakdown?.total) || 0,
+        currency: result.meta?.currency || result.budget?.currency || "INR",
+      };
+
+      const aiInsights = {
+        localCuisine: result.itinerary?.local_cuisine || [],
+        travelTips: result.budget?.tips || [],
+        packingTips: result.itinerary?.packing_tips || [],
+        safetyNotes: [],
+      };
+
+      const response = await api.post("/trips/ai-import", {
+        title: `Trip to ${meta.destination}`,
+        meta,
+        weather: result.weather,
+        route: result.route,
+        budget: result.budget,
+        itinerary: result.itinerary,
+        agentStatus: result.agentStatus,
+        aiInsights,
+      });
+
+      navigate(`/trips/${response.data.trip._id}`);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to save trip. Please try again.");
+    } finally {
+      setSavingTrip(false);
+    }
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -459,6 +506,16 @@ export default function AIPlannerPage() {
               >
                 <RotateCcw size={14} />
                 New Plan
+              </button>
+            </div>
+
+            <div className="mb-6 flex justify-end">
+              <button
+                onClick={handleSaveTrip}
+                disabled={savingTrip}
+                className="btn-primary text-sm"
+              >
+                {savingTrip ? "Saving Trip..." : "Save Trip"}
               </button>
             </div>
 

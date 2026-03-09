@@ -1,13 +1,10 @@
 import { useState, useEffect } from "react";
 import {
   Plus,
-  Sparkles,
   MapPin,
   Trash2,
   ChevronDown,
   ChevronUp,
-  Loader,
-  X,
 } from "lucide-react";
 import { useTripStore } from "../store/tripStore";
 import { tripService } from "../services/tripService";
@@ -22,30 +19,24 @@ const CATEGORY_STYLES = {
   other: "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400",
 };
 
-const VIBES = [
-  "adventure",
-  "relaxation",
-  "party",
-  "cultural",
-  "food",
-  "budget",
-  "luxury",
-];
+const cloneDays = (days = []) =>
+  days.map((day) => ({
+    ...day,
+    activities: [...(day.activities || [])],
+  }));
 
-export default function ItineraryBoard({ tripId, trip }) {
+export default function ItineraryBoard({
+  tripId,
+  isEditMode = false,
+  onManualSave,
+  onCancelEdit,
+}) {
   const { itinerary, setItinerary } = useTripStore();
 
   const [loading, setLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
-
+  const [saving, setSaving] = useState(false);
   const [expandedDays, setExpandedDays] = useState({});
-  const [showAIForm, setShowAIForm] = useState(false);
-
-  const [aiForm, setAiForm] = useState({
-    vibe: "adventure",
-    days: trip?.duration || 3,
-    preferences: "",
-  });
+  const [draftDays, setDraftDays] = useState([]);
 
   const [showAddActivity, setShowAddActivity] = useState(null);
 
@@ -73,28 +64,15 @@ export default function ItineraryBoard({ tripId, trip }) {
     fetch();
   }, [tripId]);
 
-  const handleGenerate = async (e) => {
-    e.preventDefault();
-    setGenerating(true);
+  useEffect(() => {
+    setDraftDays(cloneDays(itinerary?.days || []));
+  }, [itinerary]);
 
-    try {
-      const data = await tripService.generateItinerary(tripId, {
-        destination: trip.destination,
-        ...aiForm,
-      });
-
-      setItinerary(data.itinerary);
-      setShowAIForm(false);
-      setExpandedDays({ 0: true });
-    } catch (err) {
-      alert(err.response?.data?.message || "AI generation failed");
+  const handleAddActivity = (dayIndex) => {
+    if (!activityForm.hour || !activityForm.minute || !activityForm.title.trim()) {
+      alert("Time and title are required");
+      return;
     }
-
-    setGenerating(false);
-  };
-
-  const handleAddActivity = async (dayIndex) => {
-    const days = [...(itinerary?.days || [])];
 
     const time = `${activityForm.hour}:${activityForm.minute} ${activityForm.ampm}`;
 
@@ -108,50 +86,70 @@ export default function ItineraryBoard({ tripId, trip }) {
       source: "custom",
     };
 
-    let activities = days[dayIndex].activities || [];
+    setDraftDays((prev) => {
+      const days = cloneDays(prev);
+      if (!days[dayIndex]) return days;
 
-    // Replace activity if same time exists
-    activities = activities.filter((a) => a.time !== time);
+      let activities = days[dayIndex].activities || [];
+      activities = activities.filter((a) => a.time !== time);
+      activities.push(newActivity);
 
-    activities.push(newActivity);
+      activities.sort((a, b) => {
+        const t1 = new Date(`1970/01/01 ${a.time}`);
+        const t2 = new Date(`1970/01/01 ${b.time}`);
+        return t1 - t2;
+      });
 
-    // Sort activities
-    activities.sort((a, b) => {
-      const t1 = new Date(`1970/01/01 ${a.time}`);
-      const t2 = new Date(`1970/01/01 ${b.time}`);
-      return t1 - t2;
+      days[dayIndex].activities = activities;
+      return days;
     });
 
-    days[dayIndex].activities = activities;
-
-    try {
-      const data = await tripService.updateItinerary(tripId, days);
-      setItinerary(data.itinerary);
-
-      setShowAddActivity(null);
-
-      setActivityForm({
-        hour: "",
-        minute: "",
-        ampm: "AM",
-        title: "",
-        description: "",
-        location: "",
-        category: "activity",
-        cost: 0,
-      });
-    } catch {}
+    setShowAddActivity(null);
+    setActivityForm({
+      hour: "",
+      minute: "",
+      ampm: "AM",
+      title: "",
+      description: "",
+      location: "",
+      category: "activity",
+      cost: 0,
+    });
   };
 
-  const handleDeleteActivity = async (dayIndex, actIndex) => {
-    const days = JSON.parse(JSON.stringify(itinerary.days));
-    days[dayIndex].activities.splice(actIndex, 1);
-    const data = await tripService.updateItinerary(tripId, days);
-    setItinerary(data.itinerary);
+  const handleDeleteActivity = (dayIndex, actIndex) => {
+    setDraftDays((prev) => {
+      const days = cloneDays(prev);
+      if (!days[dayIndex]?.activities) return days;
+
+      days[dayIndex].activities.splice(actIndex, 1);
+      return days;
+    });
+  };
+
+  const handleSaveManualEdits = async () => {
+    setSaving(true);
+    try {
+      const data = await tripService.updateItinerary(tripId, draftDays);
+      setItinerary(data.itinerary);
+      onManualSave?.();
+    } catch {
+      alert("Failed to save itinerary");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelManualEdits = () => {
+    setDraftDays(cloneDays(itinerary?.days || []));
+    setShowAddActivity(null);
+    onCancelEdit?.();
   };
 
   const toggleDay = (i) =>
     setExpandedDays((prev) => ({ ...prev, [i]: !prev[i] }));
+
+  const visibleDays = isEditMode ? draftDays : itinerary?.days || [];
 
   if (loading) {
     return (
@@ -164,31 +162,19 @@ export default function ItineraryBoard({ tripId, trip }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="section-title">Itinerary</h2>
-
-        <button
-          onClick={() => setShowAIForm(!showAIForm)}
-          className="btn-primary text-sm"
-        >
-          <Sparkles size={15} /> Generate with AI
-        </button>
+        <h2 className="section-title">
+          {isEditMode ? "Manual Edit Itinerary" : "Itinerary"}
+        </h2>
       </div>
 
-      {!itinerary?.days?.length ? (
+      {!visibleDays?.length ? (
         <div className="card p-14 text-center">
           <p className="text-5xl mb-4">🗺️</p>
           <p className="font-bold text-gray-500 mb-1">No itinerary yet</p>
-
-          <button
-            onClick={() => setShowAIForm(true)}
-            className="btn-primary text-sm mx-auto"
-          >
-            Generate with AI
-          </button>
         </div>
       ) : (
         <div className="space-y-3">
-          {itinerary.days.map((day, di) => (
+          {visibleDays.map((day, di) => (
             <div key={di} className="card overflow-hidden">
               <button
                 onClick={() => toggleDay(di)}
@@ -257,18 +243,20 @@ export default function ItineraryBoard({ tripId, trip }) {
                               )}
                             </div>
 
-                            <button
-                              onClick={() => handleDeleteActivity(di, ai)}
-                              className="opacity-0 group-hover/act:opacity-100 text-red-400 hover:text-red-600 transition-all p-1 rounded-lg hover:bg-red-50 flex-shrink-0"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            {isEditMode && (
+                              <button
+                                onClick={() => handleDeleteActivity(di, ai)}
+                                className="opacity-0 group-hover/act:opacity-100 text-red-400 hover:text-red-600 transition-all p-1 rounded-lg hover:bg-red-50 flex-shrink-0"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
                     ))}
 
-                    {showAddActivity === di ? (
+                    {isEditMode && showAddActivity === di ? (
                       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/40 rounded-xl p-3 space-y-2 animate-fade-in">
                         <div className="grid grid-cols-3 gap-2">
                           <input
@@ -362,19 +350,38 @@ export default function ItineraryBoard({ tripId, trip }) {
                           </button>
                         </div>
                       </div>
-                    ) : (
+                    ) : isEditMode ? (
                       <button
                         onClick={() => setShowAddActivity(di)}
                         className="flex items-center gap-1.5 text-xs text-primary-500 hover:text-primary-700 font-medium mt-1.5 transition-colors"
                       >
                         <Plus size={13} /> Add activity
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               )}
             </div>
           ))}
+
+          {isEditMode && (
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                onClick={handleCancelManualEdits}
+                className="btn-secondary text-sm"
+                disabled={saving}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveManualEdits}
+                className="btn-primary text-sm"
+                disabled={saving}
+              >
+                {saving ? "Saving..." : "Save Itinerary"}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

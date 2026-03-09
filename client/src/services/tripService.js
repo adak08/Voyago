@@ -5,6 +5,10 @@ export const tripService = {
     const res = await api.post("/trips", data);
     return res.data;
   },
+  createTripFromAIPlan: async (data) => {
+    const res = await api.post("/trips/ai-import", data);
+    return res.data;
+  },
   getUserTrips: async () => {
     const res = await api.get("/trips");
     return res.data;

@@ -41,6 +41,134 @@ export const createTrip = async (req, res, next) => {
   }
 };
 
+// @POST /api/trips/ai-import - Create trip + full itinerary from AI planner payload
+export const createTripFromAIPlan = async (req, res, next) => {
+  try {
+    const {
+      title,
+      meta = {},
+      weather = {},
+      route = {},
+      budget = {},
+      itinerary = {},
+      agentStatus = {},
+      aiInsights = {},
+    } = req.body;
+
+    const inviteCode = generateInviteCode();
+    const startDate = meta.startDate || meta.start_date;
+    const endDate = meta.endDate || meta.end_date;
+
+    const trip = await Trip.create({
+      title,
+      destination: meta.destination,
+      startDate,
+      endDate,
+      admin: req.user.id,
+      inviteCode,
+      members: [
+        {
+          user: req.user.id,
+          role: "admin",
+          joinedAt: new Date(),
+        },
+      ],
+    });
+
+    const normalizedDays = Array.isArray(itinerary.days)
+      ? itinerary.days.map((day) => ({
+          day: day.day,
+          date: day.date,
+          title: day.title,
+          summary: day.summary || day.day_summary,
+          activities: Array.isArray(day.activities)
+            ? day.activities.map((activity) => ({
+                time: activity.time,
+                title: activity.title,
+                description: activity.description,
+                category: activity.category,
+                location: activity.location,
+                cost: activity.cost,
+                tips: activity.tips,
+                source: activity.source || "ai",
+              }))
+            : [],
+        }))
+      : [];
+
+    const normalizedWeatherForecast = Array.isArray(weather.forecast)
+      ? weather.forecast.map((entry) => ({
+          date: entry.date || entry.day || null,
+          condition: entry.condition,
+          temperature:
+            typeof entry.temperature === "number"
+              ? entry.temperature
+              : entry.temperature?.max,
+          humidity: entry.humidity,
+        }))
+      : [];
+
+    await Itinerary.create({
+      tripId: trip._id,
+      meta: {
+        origin: meta.origin,
+        destination: meta.destination,
+        startDate,
+        endDate,
+        days: Number(meta.days) || 0,
+        people: Number(meta.people) || 1,
+        vibe: meta.vibe,
+        budget: Number(meta.budget) || 0,
+        currency: meta.currency || "INR",
+      },
+      aiData: {
+        weather: {
+          available: !!weather.available,
+          forecast: normalizedWeatherForecast,
+        },
+        route: {
+          available: !!route.available,
+          distance: route.distance,
+          duration: route.duration,
+          recommendedMode: route.recommendedMode || route.mode,
+        },
+        budget: {
+          transport: budget?.breakdown?.transport ?? budget?.transport,
+          hotel: budget?.breakdown?.hotel ?? budget?.hotel,
+          food: budget?.breakdown?.food ?? budget?.food,
+          activities: budget?.breakdown?.activities ?? budget?.activities,
+          total: budget?.breakdown?.total ?? budget?.total,
+          currency: budget?.currency || meta.currency || "INR",
+        },
+      },
+      agentStatus: {
+        weather: !!(agentStatus.weather === true || agentStatus.weather === "ok"),
+        maps: !!(
+          agentStatus.maps === true ||
+          agentStatus.route === true ||
+          agentStatus.maps === "ok" ||
+          agentStatus.route === "ok"
+        ),
+        budget: !!(agentStatus.budget === true || agentStatus.budget === "ok"),
+        itinerary: !!(agentStatus.itinerary === true || agentStatus.itinerary === "ok"),
+      },
+      days: normalizedDays,
+      aiInsights,
+      generatedByAI: true,
+      lastUpdatedBy: req.user.id,
+    });
+
+    await User.findByIdAndUpdate(req.user.id, { $push: { trips: trip._id } });
+
+    res.status(201).json({
+      success: true,
+      trip,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // @GET /api/trips - Get user trips
 export const getUserTrips = async (req, res, next) => {
   try {
