@@ -1,10 +1,3 @@
-/**
- * Itinerary Agent
- * Uses Google Gemini (gemini-2.5-flash) to generate a structured, day-by-day
- * travel itinerary enriched with real weather, events, and budget data from
- * the other agents.
- */
-
 import { generateJSON } from "../ai/geminiClient.js";
 
 /**

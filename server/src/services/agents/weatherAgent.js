@@ -1,9 +1,3 @@
-/**
- * Weather Agent
- * Fetches a multi-day weather forecast for a destination using OpenWeatherMap.
- * Falls back gracefully when the API key is absent or the call fails.
- */
-
 const OPENWEATHER_BASE = "https://api.openweathermap.org/data/2.5";
 
 /**
