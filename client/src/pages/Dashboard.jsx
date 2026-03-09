@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, LogOut, Plane, Users, Search, Sun, Moon, MapPin } from "lucide-react";
+import { Plus, LogOut, Plane, Users, Search, Sun, Moon, MapPin, Sparkles } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { useTripStore } from "../store/tripStore";
 import { useSocketStore } from "../store/socketStore";
@@ -71,6 +71,15 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* ── AI Planner shortcut ── */}
+            <button
+              onClick={() => navigate("/ai-planner")}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-primary-500 to-violet-600 text-white text-xs font-bold shadow-md shadow-primary-500/20 hover:opacity-90 transition-opacity"
+            >
+              <Sparkles size={12} />
+              AI Planner
+            </button>
+
             <NotificationBell />
             <button onClick={toggle} className="theme-toggle">
               {dark ? <Sun size={16} /> : <Moon size={16} />}
@@ -83,15 +92,11 @@ export default function Dashboard() {
                   className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center font-bold text-white text-sm"
                 >
                   {user?.avatar ? (
-                    <img
-                      src={user.avatar}
-                      className="w-8 h-8 rounded-full object-cover"
-                    />
+                    <img src={user.avatar} className="w-8 h-8 rounded-full object-cover" />
                   ) : (
                     user?.name?.[0]?.toUpperCase()
                   )}
                 </button>
-
                 <ProfileCard open={profileOpen} setOpen={setProfileOpen} />
               </div>
               <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -121,7 +126,14 @@ export default function Dashboard() {
               {user?.name?.split(" ")[0]} 👋
             </p>
           </div>
-          <div className="flex gap-2.5">
+          <div className="flex gap-2.5 flex-wrap">
+            {/* AI Planner CTA — visible on mobile here */}
+            <button
+              onClick={() => navigate("/ai-planner")}
+              className="btn-primary text-sm bg-gradient-to-r from-primary-500 to-violet-600 sm:hidden"
+            >
+              <Sparkles size={15} /> AI Planner
+            </button>
             <button
               onClick={() => setShowJoin(!showJoin)}
               className="btn-secondary text-sm"
@@ -134,6 +146,31 @@ export default function Dashboard() {
             >
               <Plus size={15} /> New Trip
             </button>
+          </div>
+        </div>
+
+        {/* ─── AI Planner banner ─── */}
+        <div
+          onClick={() => navigate("/ai-planner")}
+          className="card p-4 mb-6 border border-primary-100 dark:border-primary-900/40 bg-gradient-to-r from-primary-50 to-violet-50 dark:from-primary-900/10 dark:to-violet-900/10 cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5 group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-violet-600 rounded-xl flex items-center justify-center shadow-md shadow-primary-500/20 flex-shrink-0">
+                <Sparkles className="text-white" size={18} />
+              </div>
+              <div>
+                <p className="font-bold text-gray-900 dark:text-gray-100 text-sm group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                  ✨ Try the AI Trip Planner
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Weather · Maps · Events · Budget · Gemini-powered itinerary — all in one click
+                </p>
+              </div>
+            </div>
+            <div className="flex-shrink-0 text-primary-500 dark:text-primary-400 group-hover:translate-x-1 transition-transform">
+              →
+            </div>
           </div>
         </div>
 
@@ -152,22 +189,14 @@ export default function Dashboard() {
                 onChange={(e) => setJoinCode(e.target.value)}
                 required
               />
-              <button
-                type="submit"
-                disabled={joining}
-                className="btn-primary whitespace-nowrap text-sm"
-              >
+              <button type="submit" disabled={joining} className="btn-primary whitespace-nowrap text-sm">
                 {joining ? (
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  "Join"
-                )}
+                ) : "Join"}
               </button>
             </form>
             {joinError && (
-              <p className="text-red-500 dark:text-red-400 text-sm mt-2">
-                {joinError}
-              </p>
+              <p className="text-red-500 dark:text-red-400 text-sm mt-2">{joinError}</p>
             )}
           </div>
         )}
@@ -210,32 +239,26 @@ export default function Dashboard() {
               No trips yet
             </h3>
             <p className="text-gray-400 dark:text-gray-600 text-sm mb-6">
-              Create your first trip or join one with a code
+              Create your first trip or use the AI planner to get started
             </p>
-            <button
-              onClick={() => navigate("/trip/new")}
-              className="btn-primary text-sm"
-            >
-              <Plus size={15} /> Plan your first trip
-            </button>
+            <div className="flex items-center justify-center gap-3 flex-wrap">
+              <button onClick={() => navigate("/ai-planner")} className="btn-primary text-sm">
+                <Sparkles size={15} /> AI Planner
+              </button>
+              <button onClick={() => navigate("/trip/new")} className="btn-secondary text-sm">
+                <Plus size={15} /> Manual Trip
+              </button>
+            </div>
           </div>
         ) : (
           <>
-            {ongoing.length > 0 && (
-              <Section title="🌍 Ongoing" trips={ongoing} />
-            )}
-            {upcoming.length > 0 && (
-              <Section title="📅 Upcoming" trips={upcoming} />
-            )}
-            {completed.length > 0 && (
-              <Section title="✅ Completed" trips={completed} />
-            )}
+            {ongoing.length > 0 && <Section title="🌍 Ongoing" trips={ongoing} />}
+            {upcoming.length > 0 && <Section title="📅 Upcoming" trips={upcoming} />}
+            {completed.length > 0 && <Section title="✅ Completed" trips={completed} />}
             {filtered.length === 0 && search && (
               <div className="text-center py-16 text-gray-400 dark:text-gray-600">
                 <Search className="mx-auto mb-3" size={32} />
-                <p>
-                  No trips matching "<strong>{search}</strong>"
-                </p>
+                <p>No trips matching "<strong>{search}</strong>"</p>
               </div>
             )}
           </>
@@ -249,7 +272,9 @@ function Section({ title, trips }) {
   const navigate = useNavigate();
   return (
     <div className="mb-10">
-      <h2 className="text-sm font-bold text-gray-500 dark:text-gray-500 uppercase tracking-widest mb-4">{title}</h2>
+      <h2 className="text-sm font-bold text-gray-500 dark:text-gray-500 uppercase tracking-widest mb-4">
+        {title}
+      </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {trips.map((trip) => (
           <TripCard key={trip._id} trip={trip} onClick={() => navigate(`/trip/${trip._id}`)} />

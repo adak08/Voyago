@@ -1,115 +1,107 @@
-import { planTrip } from "../services/orchestrator/tripPlanner.js";
+import { GoogleGenAI } from "@google/genai";
 
-/**
- * @POST /api/v1/ai/plan-trip
- */
-export const planTripHandler = async (req, res, next) => {
+const safeParseJSON = (text) => {
+  // 1) Fast path: valid strict JSON payload.
   try {
-    const {
-      destination,
-      origin = "",
-      days = 5,
-      people = 1,
-      budget = "medium",
-      vibe = "balanced",
-      preferences = "",
-      startDate = null,
-      currency = "INR",
-    } = req.body;
+    return JSON.parse(text);
+  } catch {}
 
-    if (!destination || typeof destination !== "string" || !destination.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "destination is required and must be a non-empty string.",
-      });
-    }
-
-    const numDays = parseInt(days, 10);
-    if (isNaN(numDays) || numDays < 1 || numDays > 30) {
-      return res.status(400).json({
-        success: false,
-        message: "days must be a number between 1 and 30.",
-      });
-    }
-
-    const numPeople = parseInt(people, 10);
-    if (isNaN(numPeople) || numPeople < 1 || numPeople > 50) {
-      return res.status(400).json({
-        success: false,
-        message: "people must be a number between 1 and 50.",
-      });
-    }
-
-    const validBudgets = ["low", "medium", "high", "budget", "luxury"];
-    if (budget && !validBudgets.includes(budget.toLowerCase())) {
-      return res.status(400).json({
-        success: false,
-        message: `budget must be one of: ${validBudgets.join(", ")}.`,
-      });
-    }
-
-    if (startDate && !/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
-      return res.status(400).json({
-        success: false,
-        message: "startDate must be in YYYY-MM-DD format.",
-      });
-    }
-
-    const result = await planTrip({
-      destination: destination.trim(),
-      origin: origin?.trim() || "",
-      days: numDays,
-      people: numPeople,
-      budget,
-      vibe,
-      preferences,
-      startDate,
-      currency,
-    });
-
-    if (!result.success) {
-      return res.status(500).json({
-        success: false,
-        message:
-          result.error || "Trip planning failed. Check API keys and try again.",
-        agentStatus: result.agentStatus,
-        generatedAt: result.generatedAt,
-      });
-    }
-
-    return res.status(200).json({
-      success: true,
-      data: result,
-    });
-  } catch (err) {
-    next(err);
+  // 2) Common fallback: wrapped in ```json ... ``` fences.
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced?.[1]) {
+    try {
+      return JSON.parse(fenced[1].trim());
+    } catch {}
   }
+
+  // 3) Last resort: parse the largest outer JSON object.
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    const candidate = text.slice(firstBrace, lastBrace + 1);
+    try {
+      return JSON.parse(candidate);
+    } catch {}
+  }
+
+  throw new Error("Gemini returned invalid JSON");
+};
+
+const repairJSONWithModel = async (ai, invalidText, model, maxOutputTokens) => {
+  const repairPrompt = `
+You are a JSON repair assistant.
+Convert the following content into strictly valid JSON.
+
+RULES:
+1. Return ONLY valid JSON.
+2. Do not add markdown fences.
+3. Preserve original structure and values as much as possible.
+
+CONTENT TO REPAIR:
+${invalidText}
+`.trim();
+
+  const repaired = await ai.models.generateContent({
+    model,
+    contents: repairPrompt,
+    config: {
+      responseMimeType: "application/json",
+      maxOutputTokens,
+    },
+  });
+
+  const repairedText = (repaired.text || "").trim();
+  if (!repairedText) {
+    throw new Error("Gemini JSON repair returned an empty response");
+  }
+
+  return safeParseJSON(repairedText);
+};
+
+const getGeminiClient = () => {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
+
+  return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 };
 
 /**
- * @GET /api/v1/ai/agents/status
- * Quick health-check to see which agent API keys are configured.
+ * Generate JSON output from Gemini and parse it safely.
+ *
+ * @param {string} prompt
+ * @param {string} [model="gemini-2.5-flash"]
+ * @param {number} [maxOutputTokens=8192]
+ * @returns {Promise<object>}
  */
-export const agentStatusHandler = async (_req, res, next) => {
+export const generateJSON = async (
+  prompt,
+  model = "gemini-2.5-flash",
+  maxOutputTokens = 8192
+) => {
+  const ai = getGeminiClient();
+
+  const response = await ai.models.generateContent({
+    model,
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      maxOutputTokens,
+    },
+  });
+
+  const rawText = (response.text || "").trim();
+  if (!rawText) {
+    throw new Error("Gemini returned an empty response");
+  }
+
   try {
-    const status = {
-      gemini:       !!process.env.GEMINI_API_KEY,
-      openweather:  !!process.env.OPENWEATHER_KEY,
-      ors:          !!process.env.ORS_API_KEY,        // ← OpenRouteService
-      ticketmaster: !!process.env.EVENTS_API_KEY,
-    };
-
-    const allReady = Object.values(status).every(Boolean);
-
-    return res.status(200).json({
-      success: true,
-      configured: status,
-      allReady,
-      message: allReady
-        ? "All agent APIs are configured."
-        : "Some agents are missing API keys — they will return unavailable data.",
-    });
-  } catch (err) {
-    next(err);
+    return safeParseJSON(rawText);
+  } catch {
+    try {
+      return await repairJSONWithModel(ai, rawText, model, maxOutputTokens);
+    } catch {
+      throw new Error("Gemini returned invalid JSON (initial + repair attempt failed)");
+    }
   }
 };

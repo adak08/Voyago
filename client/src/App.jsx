@@ -8,6 +8,7 @@ import CreateTrip from "./pages/CreateTrip";
 import OTPVerification from "./pages/OTPVerification";
 import HomePage from "./pages/HomePage";
 import ForgotPassword from "./pages/ForgotPassword";
+import AIPlannerPage from "./pages/AIPlannerPage";
 
 const ProtectedRoute = ({ children }) => {
   const { token } = useAuthStore();
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/trip/new" element={<ProtectedRoute><CreateTrip /></ProtectedRoute>} />
         <Route path="/trip/:id" element={<ProtectedRoute><TripDetails /></ProtectedRoute>} />
+        <Route path="/ai-planner" element={<ProtectedRoute><AIPlannerPage /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );
