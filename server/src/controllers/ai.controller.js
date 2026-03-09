@@ -1,8 +1,6 @@
 import { planTrip } from "../services/orchestrator/tripPlanner.js";
 
-/**
- * @POST /api/v1/ai/plan-trip
- */
+
 export const planTripHandler = async (req, res, next) => {
   try {
     const {
@@ -17,6 +15,7 @@ export const planTripHandler = async (req, res, next) => {
       currency = "INR",
     } = req.body;
 
+    // Basic validation
     if (!destination || typeof destination !== "string" || !destination.trim()) {
       return res.status(400).json({
         success: false,
@@ -55,6 +54,7 @@ export const planTripHandler = async (req, res, next) => {
       });
     }
 
+    // Delegate to orchestrator
     const result = await planTrip({
       destination: destination.trim(),
       origin: origin?.trim() || "",
@@ -71,7 +71,8 @@ export const planTripHandler = async (req, res, next) => {
       return res.status(500).json({
         success: false,
         message:
-          result.error || "Trip planning failed. Check API keys and try again.",
+          result.error ||
+          "Trip planning failed. Check API keys and try again.",
         agentStatus: result.agentStatus,
         generatedAt: result.generatedAt,
       });
@@ -86,16 +87,13 @@ export const planTripHandler = async (req, res, next) => {
   }
 };
 
-/**
- * @GET /api/v1/ai/agents/status
- * Quick health-check to see which agent API keys are configured.
- */
+
 export const agentStatusHandler = async (_req, res, next) => {
   try {
     const status = {
-      gemini:       !!process.env.GEMINI_API_KEY,
-      openweather:  !!process.env.OPENWEATHER_KEY,
-      ors:          !!process.env.ORS_API_KEY,        // ← OpenRouteService
+      gemini: !!process.env.GEMINI_API_KEY,
+      openweather: !!process.env.OPENWEATHER_KEY,
+      google_maps: !!process.env.GOOGLE_MAP_KEY,
       ticketmaster: !!process.env.EVENTS_API_KEY,
     };
 
