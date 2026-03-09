@@ -1,31 +1,5 @@
 import mongoose from "mongoose";
 
-const activitySchema = new mongoose.Schema({
-    time: { type: String },
-    title: { type: String, required: true },
-    description: { type: String },
-    location: { type: String },
-    category: {
-        type: String,
-        enum: ["food", "travel", "activity", "accommodation", "other"],
-        default: "other",
-    },
-    cost: { type: Number, default: 0 },
-
-    source: {
-        type: String,
-        enum: ["ai", "custom"],
-        default: "custom",
-    },
-});
-
-const daySchema = new mongoose.Schema({
-    day: { type: Number, required: true },
-    date: { type: Date },
-    title: { type: String },
-    activities: [activitySchema],
-});
-
 const itinerarySchema = new mongoose.Schema(
     {
         tripId: {
@@ -34,11 +8,96 @@ const itinerarySchema = new mongoose.Schema(
             required: true,
             unique: true,
         },
-        days: [daySchema],
+
+        meta: {
+            origin: String,
+            destination: String,
+            startDate: Date,
+            endDate: Date,
+            days: Number,
+            people: Number,
+            vibe: String,
+            budget: Number,
+            currency: {
+                type: String,
+                default: "INR",
+            },
+        },
+
+        aiData: {
+            weather: {
+                available: Boolean,
+                forecast: [
+                    {
+                        date: Date,
+                        condition: String,
+                        temperature: Number,
+                        humidity: Number,
+                    },
+                ],
+            },
+
+            route: {
+                available: Boolean,
+                distance: String,
+                duration: String,
+                recommendedMode: String,
+            },
+
+            budget: {
+                transport: Number,
+                hotel: Number,
+                food: Number,
+                activities: Number,
+                total: Number,
+                currency: String,
+            },
+        },
+
+        agentStatus: {
+            weather: Boolean,
+            maps: Boolean,
+            budget: Boolean,
+            itinerary: Boolean,
+        },
+
+        days: [
+            {
+                day: Number,
+                date: Date,
+                title: String,
+                summary: String,
+                activities: [
+                    {
+                        time: String,
+                        title: String,
+                        description: String,
+                        category: String,
+                        location: String,
+                        cost: Number,
+                        tips: String,
+                        source: {
+                            type: String,
+                            enum: ["ai", "custom"],
+                            default: "ai",
+                        },
+                    },
+                ],
+            },
+        ],
+
+        aiInsights: {
+            localCuisine: [String],
+            travelTips: [String],
+            packingTips: [String],
+            safetyNotes: [String],
+        },
+
         generatedByAI: {
             type: Boolean,
-            default: false,
+            default: true,
         },
+
         lastUpdatedBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",

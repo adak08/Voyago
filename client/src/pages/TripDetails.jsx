@@ -1,80 +1,201 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
-  Map,
-  DollarSign,
-  MessageCircle,
-  Users,
-  Share2,
-  Copy,
+  Camera,
   Calendar,
   Clock,
-  Plane,
-  Camera,
-  Trash2,
-  LogOut,
+  Copy,
+  DollarSign,
   Edit,
+  LogOut,
+  Map,
+  MessageCircle,
+  Trash2,
+  Users,
+  Sparkles,
+  MapPin,
 } from "lucide-react";
+import { format } from "date-fns";
 
 import { useTripStore } from "../store/tripStore";
 import { useAuthStore } from "../store/authStore";
 import { useSocket } from "../hooks/useSocket";
+import { tripService } from "../services/tripService";
 
+import AIItineraryBoard from "../components/ai/AIItineraryBoard";
+import WeatherCard from "../components/ai/WeatherCard";
+import RouteCard from "../components/ai/RouteCard";
+import BudgetBreakdown from "../components/ai/BudgetBreakdown";
 import ItineraryBoard from "../components/ItineraryBoard";
 import ExpenseWidget from "../components/ExpenseWidget";
-import ChatBox from "../components/ChatBox";
 import PhotoGallery from "../components/PhotoGallery";
-
-import { format } from "date-fns";
+import ChatBox from "../components/ChatBox";
 
 const TABS = [
+  { id: "overview", label: "Overview", icon: Sparkles },
   { id: "itinerary", label: "Itinerary", icon: Map },
   { id: "expenses", label: "Expenses", icon: DollarSign },
-  { id: "chat", label: "Chat", icon: MessageCircle },
   { id: "photos", label: "Photos", icon: Camera },
+  { id: "chat", label: "Chat", icon: MessageCircle },
   { id: "members", label: "Members", icon: Users },
 ];
-
-const STATUS_STYLES = {
-  upcoming: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400",
-  ongoing:
-    "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400",
-  completed: "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400",
-};
 
 export default function TripDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const { currentTrip, fetchTrip, loading, deleteTrip, leaveTrip, updateTrip } =
-    useTripStore();
-
+  const {
+    currentTrip,
+    itinerary,
+    fetchTrip,
+    setItinerary,
+    loading,
+    updateTrip,
+    deleteTrip,
+    leaveTrip,
+  } = useTripStore();
   const { user } = useAuthStore();
 
-  const [activeTab, setActiveTab] = useState("itinerary");
   const [copied, setCopied] = useState(false);
-
   const [editing, setEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [showManualEditor, setShowManualEditor] = useState(false);
   const [title, setTitle] = useState("");
   const [destination, setDestination] = useState("");
+  const itinerarySectionRef = useRef(null);
 
   useSocket(id);
 
   useEffect(() => {
-    if (id) fetchTrip(id);
+    if (!id) return;
+    fetchTrip(id);
   }, [id, fetchTrip]);
 
   useEffect(() => {
-    if (currentTrip) {
-      setTitle(currentTrip.title || "");
-      setDestination(currentTrip.destination || "");
-    }
+    const fetchItinerary = async () => {
+      if (!id) return;
+      try {
+        const data = await tripService.getItinerary(id);
+        setItinerary(data.itinerary);
+      } catch {}
+    };
+
+    fetchItinerary();
+  }, [id, setItinerary]);
+
+  useEffect(() => {
+    if (!currentTrip) return;
+    setTitle(currentTrip.title || "");
+    setDestination(currentTrip.destination || "");
   }, [currentTrip]);
 
-  const copyInviteCode = async () => {
+  const isAdmin =
+    currentTrip?.admin?._id === user?.id || currentTrip?.admin === user?.id;
+
+  const duration = Math.max(
+    1,
+    Math.ceil(
+      (new Date(currentTrip?.endDate) - new Date(currentTrip?.startDate)) /
+        (1000 * 60 * 60 * 24),
+    ),
+  );
+
+  const aiItineraryData = useMemo(() => {
+    if (!itinerary?.days?.length) {
+      return {
+        available: false,
+        days: [],
+        local_cuisine: [],
+        packing_tips: [],
+      };
+    }
+
+    return {
+      available: true,
+      days: itinerary.days.map((day) => ({
+        day: day.day,
+        date: day.date,
+        title: day.title,
+        day_summary: day.summary,
+        activities: (day.activities || []).map((activity) => ({
+          ...activity,
+          category: activity.category || "other",
+          cost: activity.cost || 0,
+        })),
+      })),
+      local_cuisine: itinerary.aiInsights?.localCuisine || [],
+      packing_tips: itinerary.aiInsights?.packingTips || [],
+      highlights: itinerary.aiInsights?.travelTips || [],
+    };
+  }, [itinerary]);
+
+  const weatherData = useMemo(() => {
+    if (!itinerary?.aiData?.weather) return { available: false };
+
+    const forecast = (itinerary.aiData.weather.forecast || []).map((item, index) => ({
+      day: index + 1,
+      condition: item.condition || "Cloudy",
+      humidity: item.humidity ?? 0,
+      temperature: {
+        min: item.temperature ?? 0,
+        max: item.temperature ?? 0,
+      },
+    }));
+
+    return {
+      available: !!itinerary.aiData.weather.available,
+      destination: itinerary.meta?.destination || currentTrip?.destination,
+      summary: itinerary.aiInsights?.safetyNotes?.[0] || "Forecast generated by AI",
+      forecast,
+    };
+  }, [currentTrip?.destination, itinerary]);
+
+  const routeData = useMemo(() => {
+    if (!itinerary?.aiData?.route) return { available: false };
+
+    return {
+      available: !!itinerary.aiData.route.available,
+      origin: itinerary.meta?.origin || "Origin",
+      destination: itinerary.meta?.destination || currentTrip?.destination || "Destination",
+      distance: itinerary.aiData.route.distance || "-",
+      duration: itinerary.aiData.route.duration || "-",
+      mode: itinerary.aiData.route.recommendedMode || "Travel",
+      alternatives: [],
+    };
+  }, [currentTrip?.destination, itinerary]);
+
+  const budgetData = useMemo(() => {
+    if (!itinerary?.aiData?.budget) return { available: false };
+
+    const total = itinerary.aiData.budget.total || 0;
+    const people = itinerary.meta?.people || 1;
+    const days = itinerary.meta?.days || duration;
+
+    return {
+      available: total > 0,
+      currency: itinerary.aiData.budget.currency || itinerary.meta?.currency || "INR",
+      tier: "medium",
+      people,
+      days,
+      tips: itinerary.aiInsights?.travelTips || [],
+      breakdown: {
+        transport: itinerary.aiData.budget.transport || 0,
+        hotel: itinerary.aiData.budget.hotel || 0,
+        food: itinerary.aiData.budget.food || 0,
+        activities: itinerary.aiData.budget.activities || 0,
+        total,
+        per_person: people > 0 ? Math.round(total / people) : total,
+        per_day: days > 0 ? Math.round(total / days) : total,
+      },
+    };
+  }, [duration, itinerary]);
+
+  const handleCopyInvite = async () => {
+    if (!currentTrip?.inviteCode) return;
+
     try {
-      await navigator.clipboard.writeText(currentTrip?.inviteCode);
+      await navigator.clipboard.writeText(currentTrip.inviteCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -82,33 +203,7 @@ export default function TripDetails() {
     }
   };
 
-  const handleDelete = async () => {
-    const confirmDelete = window.confirm("Delete this trip permanently?");
-    if (!confirmDelete) return;
-
-    try {
-      await deleteTrip(id);
-      navigate("/dashboard");
-    } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Failed to delete trip");
-    }
-  };
-
-  const handleLeave = async () => {
-    const confirmLeave = window.confirm("Leave this trip?");
-    if (!confirmLeave) return;
-
-    try {
-      await leaveTrip(id);
-      navigate("/dashboard");
-    } catch (err) {
-      console.error(err);
-      alert(err.response?.data?.message || "Failed to leave trip");
-    }
-  };
-
-  const handleUpdate = async () => {
+  const handleSaveTripMeta = async () => {
     if (!title.trim() || !destination.trim()) {
       alert("Title and destination cannot be empty");
       return;
@@ -119,227 +214,361 @@ export default function TripDetails() {
         title: title.trim(),
         destination: destination.trim(),
       });
-
       setEditing(false);
+      await fetchTrip(id);
     } catch (err) {
-      console.error(err);
       alert(err.response?.data?.message || "Failed to update trip");
     }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Delete this trip permanently?")) return;
+
+    try {
+      await deleteTrip(id);
+      navigate("/dashboard");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete trip");
+    }
+  };
+
+  const handleLeave = async () => {
+    if (!window.confirm("Leave this trip?")) return;
+
+    try {
+      await leaveTrip(id);
+      navigate("/dashboard");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to leave trip");
+    }
+  };
+
+  const handleManualItinerarySaved = () => {
+    setShowManualEditor(false);
+    setActiveTab("itinerary");
+    itinerarySectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   if (loading && !currentTrip) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full" />
+        <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!currentTrip) return null;
 
-  const isAdmin =
-    currentTrip.admin?._id === user?.id || currentTrip.admin === user?.id;
-
-  const duration = Math.ceil(
-    (new Date(currentTrip.endDate) - new Date(currentTrip.startDate)) /
-      (1000 * 60 * 60 * 24),
-  );
-
   return (
     <div className="min-h-screen bg-[var(--bg)]">
-      {/* HEADER */}
-      <div className="bg-white dark:bg-surface-900 border-b">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-2 text-sm mb-4"
-          >
-            <ArrowLeft size={15} /> Dashboard
-          </button>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <button
+          onClick={() => navigate("/dashboard")}
+          className="btn-ghost text-sm inline-flex items-center gap-2"
+        >
+          <ArrowLeft size={15} /> Dashboard
+        </button>
 
-          {/* TITLE */}
-          <div className="flex justify-between items-start gap-4 flex-wrap">
-            <div>
-              {editing ? (
-                <div className="space-y-2">
-                  <input
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="input-field"
-                  />
+        <TripHeader
+          trip={currentTrip}
+          itinerary={itinerary}
+          duration={duration}
+          copied={copied}
+          isAdmin={isAdmin}
+          onCopyInvite={handleCopyInvite}
+          onEdit={() => setEditing(true)}
+          onOpenDetails={() => setActiveTab("overview")}
+        />
 
-                  <input
-                    value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
-                    className="input-field"
-                  />
-
-                  <button
-                    onClick={handleUpdate}
-                    className="btn-primary text-sm"
-                  >
-                    Save
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <h1 className="text-2xl font-bold">{currentTrip.title}</h1>
-
-                  <div className="text-sm text-gray-500 mt-1">
-                    📍 {currentTrip.destination}
-                  </div>
-                </>
-              )}
-
-              <div className="text-sm mt-2 flex gap-3 flex-wrap text-gray-500">
-                <span>
-                  <Calendar size={14} />{" "}
-                  {format(new Date(currentTrip.startDate), "MMM d")} –{" "}
-                  {format(new Date(currentTrip.endDate), "MMM d yyyy")}
-                </span>
-
-                <span>
-                  <Clock size={14} /> {duration} days
-                </span>
-
-                <span>
-                  <Users size={14} /> {currentTrip.members?.length} members
-                </span>
-              </div>
-            </div>
-
-            {/* ACTION BUTTONS */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Invite code */}
+        <div className="border-b border-gray-200 dark:border-surface-850">
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {TABS.map(({ id: tabId, label, icon: Icon }) => (
               <button
-                onClick={copyInviteCode}
-                className="px-4 py-2 rounded-xl text-sm font-semibold bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/30 text-primary-600 dark:text-primary-400 transition"
+                key={tabId}
+                onClick={() => setActiveTab(tabId)}
+                className={activeTab === tabId ? "tab-btn-active" : "tab-btn-inactive"}
               >
-                {copied ? "Copied!" : currentTrip.inviteCode}
+                <Icon size={15} />
+                {label}
               </button>
-
-              {isAdmin && (
-                <>
-                  <button
-                    onClick={() => setEditing(!editing)}
-                    className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-semibold bg-gray-100 dark:bg-surface-800 hover:bg-gray-200 dark:hover:bg-surface-700 transition"
-                  >
-                    <Edit size={14} />
-                    Edit
-                  </button>
-
-                  <button
-                    onClick={handleDelete}
-                    className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-semibold bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition"
-                  >
-                    <Trash2 size={14} />
-                    Delete
-                  </button>
-                </>
-              )}
-
-              {!isAdmin && (
-                <button
-                  onClick={handleLeave}
-                  className="flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-semibold bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 transition"
-                >
-                  <LogOut size={14} />
-                  Leave
-                </button>
-              )}
-            </div>
+            ))}
           </div>
         </div>
-      </div>
 
-      {/* TABS */}
-      <div className="border-b bg-white dark:bg-surface-900">
-        <div className="max-w-6xl mx-auto flex gap-2 px-4 py-3 overflow-x-auto">
-          {TABS.map(({ id: tabId, label, icon: Icon }) => (
-            <button
-              key={tabId}
-              onClick={() => setActiveTab(tabId)}
-              className={
-                activeTab === tabId ? "tab-btn-active" : "tab-btn-inactive"
-              }
-            >
-              <Icon size={15} />
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+        {activeTab === "overview" && (
+          <section className="space-y-3" id="trip-details">
+            <h2 className="section-title">AI Overview</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <WeatherCard weather={weatherData} />
+              <RouteCard route={routeData} />
+              <BudgetBreakdown budget={budgetData} />
+              <AIInsightsPanel aiInsights={itinerary?.aiInsights} />
+            </div>
+          </section>
+        )}
 
-      {/* CONTENT */}
-      <div className="max-w-6xl mx-auto px-4 py-6">
         {activeTab === "itinerary" && (
-          <ItineraryBoard tripId={id} trip={currentTrip} />
+          <section className="space-y-4" ref={itinerarySectionRef}>
+            <h2 className="section-title">Itinerary</h2>
+            <AIItineraryBoard itinerary={aiItineraryData} />
+            <div className="card p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  Manual Itinerary
+                </p>
+                <button
+                  className="btn-primary text-xs"
+                  onClick={() => setShowManualEditor((prev) => !prev)}
+                >
+                  {showManualEditor ? "Close Editor" : "Edit Itinerary"}
+                </button>
+              </div>
+
+              {showManualEditor ? (
+                <ItineraryBoard
+                  tripId={id}
+                  isEditMode
+                  onManualSave={handleManualItinerarySaved}
+                  onCancelEdit={() => setShowManualEditor(false)}
+                />
+              ) : (
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Click "Edit Itinerary" to open manual edit mode.
+                </p>
+              )}
+            </div>
+          </section>
         )}
 
         {activeTab === "expenses" && (
-          <ExpenseWidget tripId={id} trip={currentTrip} />
+          <section>
+            <ExpenseWidget tripId={id} trip={currentTrip} />
+          </section>
         )}
 
-        {activeTab === "chat" && <ChatBox tripId={id} />}
-
         {activeTab === "photos" && (
-          <PhotoGallery tripId={id} trip={currentTrip} />
+          <section>
+            <PhotoGallery tripId={id} trip={currentTrip} />
+          </section>
+        )}
+
+        {activeTab === "chat" && (
+          <section>
+            <ChatBox tripId={id} />
+          </section>
         )}
 
         {activeTab === "members" && (
-          <MembersTab trip={currentTrip} userId={user?.id} />
+          <MembersSection
+            trip={currentTrip}
+            userId={user?.id}
+            isAdmin={isAdmin}
+            onCopyInvite={handleCopyInvite}
+          />
         )}
+
+        <div className="flex gap-2 justify-end">
+          {isAdmin ? (
+            <button onClick={handleDelete} className="btn-secondary text-sm text-red-500">
+              <Trash2 size={14} /> Delete Trip
+            </button>
+          ) : (
+            <button onClick={handleLeave} className="btn-secondary text-sm text-red-500">
+              <LogOut size={14} /> Leave Trip
+            </button>
+          )}
+        </div>
       </div>
+
+      {editing && (
+        <div className="fixed inset-0 z-40 bg-black/40 flex items-center justify-center p-4">
+          <div className="card w-full max-w-md p-5">
+            <h3 className="font-bold text-lg mb-4">Edit Trip</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="label-text">Title</label>
+                <input
+                  className="input-field"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="label-text">Destination</label>
+                <input
+                  className="input-field"
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button className="btn-secondary text-sm" onClick={() => setEditing(false)}>
+                Cancel
+              </button>
+              <button className="btn-primary text-sm" onClick={handleSaveTripMeta}>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function MembersTab({ trip, userId }) {
+function TripHeader({
+  trip,
+  itinerary,
+  duration,
+  copied,
+  isAdmin,
+  onCopyInvite,
+  onEdit,
+  onOpenDetails,
+}) {
+  const destination = itinerary?.meta?.destination || trip.destination;
+  const origin = itinerary?.meta?.origin || "Origin";
+  const people = itinerary?.meta?.people || trip.members?.length || 1;
+  const vibe = itinerary?.meta?.vibe || "balanced";
+  const budget = itinerary?.aiData?.budget?.total || itinerary?.meta?.budget || trip.budget || 0;
+  const currency = itinerary?.aiData?.budget?.currency || itinerary?.meta?.currency || trip.currency || "INR";
+
   return (
-    <div className="max-w-lg">
-      <h2 className="section-title mb-5">Members ({trip.members?.length})</h2>
+    <header className="card overflow-hidden">
+      <div className="p-6 bg-gradient-to-r from-primary-500/10 via-cyan-500/10 to-emerald-500/10 border-b border-gray-100 dark:border-surface-850">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white">
+                {destination}
+              </h1>
+              <span className="badge bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs">
+                AI Plan
+              </span>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+              <MapPin size={13} /> {origin} to {destination}
+            </p>
+          </div>
 
-      <div className="space-y-4">
-        {trip.members?.map((m) => (
-          <div
-            key={m.user?._id}
-            className="card p-4 flex items-center justify-between hover:shadow-lg transition-all"
-          >
-            {/* Left section */}
+          <div className="flex flex-wrap gap-2">
+            <button onClick={onEdit} className="btn-secondary text-sm">
+              <Edit size={14} /> Edit Trip
+            </button>
+            <button
+              onClick={onOpenDetails}
+              className="btn-secondary text-sm"
+            >
+              <Sparkles size={14} /> Trip Details
+            </button>
+            {isAdmin && (
+              <button onClick={onCopyInvite} className="btn-primary text-sm">
+                <Copy size={14} /> {copied ? "Copied" : "Invite Member"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="p-5 grid grid-cols-2 md:grid-cols-5 gap-3">
+        <InfoPill
+          icon={<Calendar size={13} />}
+          label="Dates"
+          value={`${format(new Date(trip.startDate), "MMM d")} - ${format(new Date(trip.endDate), "MMM d, yyyy")}`}
+        />
+        <InfoPill icon={<Clock size={13} />} label="Days" value={`${duration} days`} />
+        <InfoPill icon={<Users size={13} />} label="People" value={`${people} travelers`} />
+        <InfoPill label="Budget" value={`${currency} ${Number(budget).toLocaleString("en-IN")}`} />
+        <InfoPill label="Vibe" value={vibe} />
+      </div>
+    </header>
+  );
+}
+
+function InfoPill({ icon, label, value }) {
+  return (
+    <div className="bg-gray-50 dark:bg-surface-850 rounded-xl p-3">
+      <p className="text-[10px] uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-1 flex items-center gap-1">
+        {icon}
+        {label}
+      </p>
+      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">{value}</p>
+    </div>
+  );
+}
+
+function MembersSection({ trip, userId, isAdmin, onCopyInvite }) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="section-title">Members ({trip.members?.length || 0})</h2>
+        {isAdmin && (
+          <button onClick={onCopyInvite} className="btn-secondary text-sm">
+            <Copy size={14} /> Invite Member
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {trip.members?.map((member) => (
+          <div key={member.user?._id || member.user} className="card p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Gradient Avatar */}
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center font-bold text-white text-sm">
-                {m.user?.name?.[0]?.toUpperCase()}
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500 to-cyan-500 text-white font-bold flex items-center justify-center">
+                {member.user?.name?.[0]?.toUpperCase() || "U"}
               </div>
-
-              {/* Name + Email */}
               <div>
-                <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                  {m.user?.name}
-                  {m.user?._id === userId && (
-                    <span className="text-gray-400 dark:text-gray-500 font-normal text-xs">
-                      {" "}
-                      (you)
-                    </span>
-                  )}
+                <p className="font-semibold text-sm text-gray-800 dark:text-gray-100">
+                  {member.user?.name || "Member"}
+                  {(member.user?._id || member.user) === userId ? " (you)" : ""}
                 </p>
-
-                <p className="text-xs text-gray-500 dark:text-gray-500">
-                  {m.user?.email}
-                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{member.user?.email || "-"}</p>
               </div>
             </div>
-
-            {/* Role badge */}
             <span
               className={`badge text-xs ${
-                m.role === "admin"
+                member.role === "admin"
                   ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-                  : "bg-gray-100 dark:bg-surface-850 text-gray-600 dark:text-gray-400"
+                  : "bg-gray-100 dark:bg-surface-800 text-gray-600 dark:text-gray-400"
               }`}
             >
-              {m.role}
+              {member.role}
             </span>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AIInsightsPanel({ aiInsights }) {
+  const sections = [
+    { title: "Local Cuisine", items: aiInsights?.localCuisine || [] },
+    { title: "Travel Tips", items: aiInsights?.travelTips || [] },
+    { title: "Packing Tips", items: aiInsights?.packingTips || [] },
+    { title: "Safety Notes", items: aiInsights?.safetyNotes || [] },
+  ];
+
+  return (
+    <div className="card p-5">
+      <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm mb-4">AI Insights</h3>
+      <div className="space-y-3">
+        {sections.map((section) => (
+          <div key={section.title}>
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+              {section.title}
+            </p>
+            {section.items.length ? (
+              <ul className="space-y-1">
+                {section.items.slice(0, 4).map((item, index) => (
+                  <li key={`${section.title}-${index}`} className="text-xs text-gray-600 dark:text-gray-300">
+                    - {item}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-gray-400 dark:text-gray-500 italic">No data available</p>
+            )}
           </div>
         ))}
       </div>

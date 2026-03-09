@@ -33,6 +33,7 @@ export default function App() {
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/trip/new" element={<ProtectedRoute><CreateTrip /></ProtectedRoute>} />
         <Route path="/trip/:id" element={<ProtectedRoute><TripDetails /></ProtectedRoute>} />
+        <Route path="/trips/:id" element={<ProtectedRoute><TripDetails /></ProtectedRoute>} />
         <Route path="/ai-planner" element={<ProtectedRoute><AIPlannerPage /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>

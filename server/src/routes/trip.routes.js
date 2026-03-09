@@ -2,7 +2,7 @@ import express from "express";
 const router = express.Router();
 import {
   createTrip, getUserTrips, getTripById, joinTrip, leaveTrip,
-  updateTrip, deleteTrip, uploadTripPhoto, getTripByInviteCode,
+  updateTrip, deleteTrip, uploadTripPhoto, getTripByInviteCode, createTripFromAIPlan,
 } from "../controllers/trip.controller.js";
 import { getMessages, sendMessage } from "../controllers/chat.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
@@ -11,6 +11,7 @@ import { tripUpload } from "../config/cloudinary.config.js";
 router.use(protect);
 
 router.route("/").get(getUserTrips).post(createTrip);
+router.post("/ai-import", createTripFromAIPlan);
 router.post("/join", joinTrip);
 router.get("/invite/:code", getTripByInviteCode);
 router.route("/:id").get(getTripById).put(updateTrip).delete(deleteTrip);
