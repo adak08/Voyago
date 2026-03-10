@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LogOut, Plane, Users, Search, Sun, Moon, MapPin, Sparkles } from "lucide-react";
+import {
+  LogOut,
+  Plane,
+  Users,
+  Search,
+  Sun,
+  Moon,
+  MapPin,
+  Sparkles,
+} from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { useTripStore } from "../store/tripStore";
 import { useSocketStore } from "../store/socketStore";
@@ -47,13 +56,14 @@ export default function Dashboard() {
     setJoining(false);
   };
 
-  const filtered = trips.filter((t) =>
-    t.title.toLowerCase().includes(search.toLowerCase()) ||
-    t.destination.toLowerCase().includes(search.toLowerCase())
+  const filtered = trips.filter(
+    (t) =>
+      t.title.toLowerCase().includes(search.toLowerCase()) ||
+      t.destination.toLowerCase().includes(search.toLowerCase()),
   );
 
-  const upcoming  = filtered.filter((t) => t.status === "upcoming");
-  const ongoing   = filtered.filter((t) => t.status === "ongoing");
+  const upcoming = filtered.filter((t) => t.status === "upcoming");
+  const ongoing = filtered.filter((t) => t.status === "ongoing");
   const completed = filtered.filter((t) => t.status === "completed");
 
   return (
@@ -92,7 +102,10 @@ export default function Dashboard() {
                   className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-violet-500 flex items-center justify-center font-bold text-white text-sm"
                 >
                   {user?.avatar ? (
-                    <img src={user.avatar} className="w-8 h-8 rounded-full object-cover" />
+                    <img
+                      src={user.avatar}
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
                   ) : (
                     user?.name?.[0]?.toUpperCase()
                   )}
@@ -146,7 +159,7 @@ export default function Dashboard() {
         {/* ─── AI Planner banner ─── */}
         <div
           onClick={() => navigate("/ai-planner")}
-          className="card p-4 mb-6 border border-primary-100 dark:border-primary-900/40 bg-gradient-to-r from-primary-50 to-violet-50 dark:from-primary-900/10 dark:to-violet-900/10 cursor-pointer hover:shadow-md transition-all hover:-translate-y-0.5 group"
+          className="card p-4 mb-6 border-2 border-primary-100 dark:border-primary-300 bg-gradient-to-r from-primary-50 to-violet-50 dark:from-primary-600 dark:to-violet-600 cursor-pointer hover:shadow-md dark:hover:shadow-primary-500/30 transition-all hover:-translate-y-0.5 group"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -154,15 +167,12 @@ export default function Dashboard() {
                 <Sparkles className="text-white" size={18} />
               </div>
               <div>
-                <p className="font-bold text-gray-900 dark:text-gray-100 text-sm group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
+                <p className="font-bold text-gray-900 dark:text-white text-sm group-hover:text-primary-600 dark:group-hover:text-primary-200 transition-colors">
                   ✨ Try the AI Trip Planner
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Weather · Maps · Events · Budget · Gemini-powered itinerary — all in one click
                 </p>
               </div>
             </div>
-            <div className="flex-shrink-0 text-primary-500 dark:text-primary-400 group-hover:translate-x-1 transition-transform">
+            <div className="flex-shrink-0 text-primary-600 dark:text-primary-200 group-hover:translate-x-1 transition-transform">
               →
             </div>
           </div>
@@ -170,7 +180,7 @@ export default function Dashboard() {
 
         {/* ─── Join Trip form ─── */}
         {showJoin && (
-          <div className="card p-4 mb-6 border border-primary-100 dark:border-primary-900/40 bg-primary-50/50 dark:bg-primary-900/10 animate-fade-in">
+          <div className="card p-4 mb-6 border border-primary-100 dark:border-primary-500/40 bg-primary-50/50 dark:bg-primary-900/20 animate-fade-in">
             <p className="text-xs font-semibold text-primary-600 dark:text-primary-400 uppercase tracking-wide mb-3">
               Enter Invite Code
             </p>
@@ -183,14 +193,22 @@ export default function Dashboard() {
                 onChange={(e) => setJoinCode(e.target.value)}
                 required
               />
-              <button type="submit" disabled={joining} className="btn-primary whitespace-nowrap text-sm">
+              <button
+                type="submit"
+                disabled={joining}
+                className="btn-primary whitespace-nowrap text-sm"
+              >
                 {joining ? (
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                ) : "Join"}
+                ) : (
+                  "Join"
+                )}
               </button>
             </form>
             {joinError && (
-              <p className="text-red-500 dark:text-red-400 text-sm mt-2">{joinError}</p>
+              <p className="text-red-500 dark:text-red-400 text-sm mt-2">
+                {joinError}
+              </p>
             )}
           </div>
         )}
@@ -226,8 +244,8 @@ export default function Dashboard() {
           </div>
         ) : trips.length === 0 ? (
           <div className="text-center py-24">
-            <div className="w-20 h-20 bg-gray-100 dark:bg-surface-850 rounded-2xl flex items-center justify-center mx-auto mb-5">
-              <MapPin className="text-gray-300 dark:text-gray-600" size={36} />
+            <div className="w-20 h-20 bg-gray-100 dark:bg-surface-800 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <MapPin className="text-gray-300 dark:text-gray-500" size={36} />
             </div>
             <h3 className="text-xl font-bold text-gray-500 dark:text-gray-400 mb-2">
               No trips yet
@@ -236,20 +254,31 @@ export default function Dashboard() {
               Create your first trip or use the AI planner to get started
             </p>
             <div className="flex items-center justify-center gap-3 flex-wrap">
-              <button onClick={() => navigate("/ai-planner")} className="btn-primary text-sm">
+              <button
+                onClick={() => navigate("/ai-planner")}
+                className="btn-primary text-sm"
+              >
                 <Sparkles size={15} /> AI Planner
               </button>
             </div>
           </div>
         ) : (
           <>
-            {ongoing.length > 0 && <Section title="🌍 Ongoing" trips={ongoing} />}
-            {upcoming.length > 0 && <Section title="📅 Upcoming" trips={upcoming} />}
-            {completed.length > 0 && <Section title="✅ Completed" trips={completed} />}
+            {ongoing.length > 0 && (
+              <Section title="🌍 Ongoing" trips={ongoing} />
+            )}
+            {upcoming.length > 0 && (
+              <Section title="📅 Trips" trips={upcoming} />
+            )}
+            {completed.length > 0 && (
+              <Section title="✅ Completed" trips={completed} />
+            )}
             {filtered.length === 0 && search && (
               <div className="text-center py-16 text-gray-400 dark:text-gray-600">
                 <Search className="mx-auto mb-3" size={32} />
-                <p>No trips matching "<strong>{search}</strong>"</p>
+                <p>
+                  No trips matching "<strong>{search}</strong>"
+                </p>
               </div>
             )}
           </>
@@ -268,7 +297,11 @@ function Section({ title, trips }) {
       </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {trips.map((trip) => (
-          <TripCard key={trip._id} trip={trip} onClick={() => navigate(`/trip/${trip._id}`)} />
+          <TripCard
+            key={trip._id}
+            trip={trip}
+            onClick={() => navigate(`/trip/${trip._id}`)}
+          />
         ))}
       </div>
     </div>
