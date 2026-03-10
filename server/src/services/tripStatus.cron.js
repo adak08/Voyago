@@ -1,5 +1,5 @@
 import cron from "node-cron";
-import Trip from "../models/Trip.js";
+import Trip from "../models/trip.model.js";
 
 const updateTripStatuses = async () => {
     try {

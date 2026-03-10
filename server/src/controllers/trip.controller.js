@@ -6,6 +6,7 @@ import { createNotification } from "../services/notification.service.js";
 import { getIO } from "../config/socket.config.js";
 import { cloudinary } from "../config/cloudinary.config.js";
 import { Readable } from "stream";
+import { sendTripInviteEmail } from "../services/email.service.js";
 
 // @POST /api/trips - Create trip
 export const createTrip = async (req, res, next) => {
@@ -395,6 +396,31 @@ export const getTripByInviteCode = async (req, res, next) => {
 
     if (!trip) return res.status(404).json({ success: false, message: "Invalid invite code" });
     res.json({ success: true, trip });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @POST /api/trips/:id/invite-email - Send invite email to an email address
+export const sendInviteEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email is required" });
+    }
+
+    const trip = await Trip.findById(req.params.id);
+    if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
+
+    // Only admin can send invites
+    if (trip.admin.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Only admin can send invites" });
+    }
+
+    await sendTripInviteEmail(email, req.user.name, trip.title, trip.inviteCode);
+
+    res.json({ success: true, message: `Invite sent to ${email}` });
   } catch (err) {
     next(err);
   }

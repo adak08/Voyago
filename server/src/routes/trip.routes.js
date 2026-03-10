@@ -2,7 +2,7 @@ import express from "express";
 const router = express.Router();
 import {
   createTrip, getUserTrips, getTripById, joinTrip, leaveTrip,
-  updateTrip, deleteTrip, uploadTripPhoto, getTripByInviteCode, createTripFromAIPlan,
+  updateTrip, deleteTrip, uploadTripPhoto, getTripByInviteCode, createTripFromAIPlan, sendInviteEmail
 } from "../controllers/trip.controller.js";
 import { getMessages, sendMessage } from "../controllers/chat.controller.js";
 import { protect } from "../middlewares/auth.middleware.js";
@@ -16,6 +16,7 @@ router.post("/join", joinTrip);
 router.get("/invite/:code", getTripByInviteCode);
 router.route("/:id").get(getTripById).put(updateTrip).delete(deleteTrip);
 router.delete("/:id/leave", leaveTrip);
+router.post("/:id/invite-email", sendInviteEmail);
 
 const tripUploadMiddleware = (req, res, next) => {
   tripUpload.single("photo")(req, res, (err) => {

@@ -57,4 +57,8 @@ export const tripService = {
     const res = await api.post(`/itinerary/${tripId}/generate`, params);
     return res.data;
   },
+  sendInviteEmail: async (tripId, email) => {
+    const res = await api.post(`/trips/${tripId}/invite-email`, { email });
+    return res.data;
+  },
 };
