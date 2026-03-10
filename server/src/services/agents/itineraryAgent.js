@@ -101,6 +101,85 @@ Return ONLY valid JSON — no explanation, no markdown fences — strictly match
 `.trim();
 };
 
+// ─── NEW: Chunk-specific prompt ───────────────────────────────────────────────
+const buildChunkPrompt = ({
+  destination,
+  origin,
+  totalDays,
+  chunkDays,       // array of day numbers e.g. [3, 4, 5]
+  vibe,
+  preferences,
+  people,
+  budget,
+  weather,
+  route,
+}) => {
+  const isFirst = chunkDays[0] === 1;
+  const isLast  = chunkDays[chunkDays.length - 1] === totalDays;
+
+  const weatherSection = weather.available && weather.forecast?.length
+    ? `WEATHER FORECAST (relevant days):\n${weather.forecast
+        .filter((f) => chunkDays.includes(f.day))
+        .map(
+          (f) =>
+            `  Day ${f.day} (${f.date}): ${f.condition}, ${f.temperature.min}–${f.temperature.max}°C, humidity ${f.humidity}%`
+        )
+        .join("\n")}`
+    : "WEATHER: Data unavailable — assume pleasant weather.";
+
+  const routeSection = route.available
+    ? `TRAVEL ROUTE:\n  From ${origin} to ${destination}: ${route.distance}, ${route.duration} by ${route.mode}.`
+    : `TRAVEL ROUTE: Data unavailable.`;
+
+  const perDayBudget = budget.available && budget.breakdown?.total
+    ? Math.round(budget.breakdown.total / totalDays)
+    : 3000;
+
+  const arrivalNote  = isFirst ? "Day 1 MUST include arrival logistics and hotel check-in." : "";
+  const departureNote = isLast ? `Day ${totalDays} MUST include hotel check-out and return journey prep.` : "";
+
+  // Build explicit per-day slots so Gemini knows the exact count required
+  const daySchemas = chunkDays
+    .map((d) => `    { "day": ${d}, "date_label": "Day ${d}", "title": "...", "theme": "...", "weather_note": "...", "activities": [...], "day_summary": "...", "estimated_day_cost": 0 }`)
+    .join(",\n");
+
+  return `
+You are an expert travel planner.
+
+TRIP DETAILS:
+  Destination: ${destination}
+  Origin: ${origin || "Not specified"}
+  Total trip: ${totalDays} days | Travellers: ${people}
+  Travel Vibe: ${vibe || "balanced"}
+  Preferences: ${preferences || "No specific preferences"}
+
+${weatherSection}
+${routeSection}
+
+BUDGET: ~₹${perDayBudget.toLocaleString("en-IN")} per day per person.
+
+TASK:
+Generate itinerary for EXACTLY ${chunkDays.length} day(s): day ${chunkDays.join(", day ")}.
+${arrivalNote}
+${departureNote}
+
+CRITICAL RULES:
+1. The "days" array MUST contain EXACTLY ${chunkDays.length} objects, one for each of: day ${chunkDays.join(", day ")}.
+2. Do NOT skip any day. Do NOT generate days outside [${chunkDays.join(", ")}].
+3. Each day MUST have 4-6 activities with realistic time slots.
+4. Use real places, restaurants, and landmarks in ${destination}.
+5. Every activity needs: time, title, description, location, category, cost, duration_minutes, tips, source.
+
+Return ONLY valid JSON, no markdown:
+
+{
+  "days": [
+${daySchemas}
+  ]
+}
+`.trim();
+};
+
 const fallbackActivity = (time, title, description, location, category, cost, duration, tips) => ({
   time,
   title,
@@ -232,30 +311,50 @@ const buildFallbackItinerary = ({ destination, days, people, vibe, weather, rout
   };
 };
 
+// ─── NEW: Generate a single chunk of days ────────────────────────────────────
+const generateChunk = async ({
+  destination,
+  origin,
+  totalDays,
+  chunkDays,
+  vibe,
+  preferences,
+  people,
+  weather,
+  route,
+  budget,
+}) => {
+  const prompt = buildChunkPrompt({
+    destination,
+    origin,
+    totalDays,
+    chunkDays,
+    vibe,
+    preferences,
+    people,
+    budget,
+    weather,
+    route,
+  });
+
+  const parsed = await generateJSON(prompt, "gemini-2.5-flash", 8192);
+  const days = parsed.days || [];
+
+  days.forEach((day) => {
+    (day.activities || []).forEach((act) => {
+      if (!act.source) act.source = "ai";
+    });
+  });
+
+  return days;
+};
+
 /**
  * Generate a structured itinerary using Gemini AI.
- *
- * @param {object} params
- * @param {string}  params.destination
- * @param {string}  [params.origin]
- * @param {number}  [params.days=5]
- * @param {string}  [params.vibe="balanced"]
- * @param {string}  [params.preferences]
- * @param {number}  [params.people=1]
- * @param {object}  params.weather       - Output from weatherAgent
- * @param {object}  params.route         - Output from mapsAgent
- * @param {object}  params.budget        - Output from budgetAgent
- * @returns {Promise<{
- *   available: boolean,
- *   destination: string,
- *   days: Array,
- *   highlights: string[],
- *   packing_tips: string[],
- *   local_cuisine: string[],
- *   generatedByAI: boolean,
- *   error?: string
- * }>}
+ * For trips > CHUNK_SIZE days, splits into chunks and merges results.
  */
+const CHUNK_SIZE = 3; // days per Gemini call
+
 export const generateItinerary = async ({
   destination,
   origin = "",
@@ -268,44 +367,135 @@ export const generateItinerary = async ({
   budget = { available: false },
 } = {}) => {
   try {
-    const prompt = buildPrompt({
-      destination,
-      origin,
-      days,
-      vibe,
-      preferences,
-      people,
-      budget,
-      weather,
-      route,
-    });
+    const safeDays = Math.max(1, Number(days) || 5);
 
-    const parsed = await generateJSON(prompt, "gemini-2.5-flash", 8192);
+    // ── Build chunks: [[1,2,3], [4,5,6], [7]] etc. ──────────────────────────
+    const chunks = [];
+    for (let start = 1; start <= safeDays; start += CHUNK_SIZE) {
+      const end = Math.min(start + CHUNK_SIZE - 1, safeDays);
+      chunks.push(
+        Array.from({ length: end - start + 1 }, (_, i) => start + i)
+      );
+    }
 
-    // Normalise: Gemini sometimes nests the itinerary days under a top-level key
-    const itineraryDays =
-      parsed.days ||
-      parsed.itinerary?.days ||
-      [];
+    console.log(`[ItineraryAgent] Generating ${safeDays} days in ${chunks.length} chunk(s): ${chunks.map(c => `[${c}]`).join(", ")}`);
 
-    // Stamp source = "ai" on every activity that's missing it
-    itineraryDays.forEach((day) => {
-      (day.activities || []).forEach((act) => {
-        if (!act.source) act.source = "ai";
+    // ── For small trips (≤ CHUNK_SIZE), use original single prompt ──────────
+    let allDays = [];
+
+    if (chunks.length === 1) {
+      // Original path — single prompt with highlights/packing_tips
+      const prompt = buildPrompt({
+        destination,
+        origin,
+        days: safeDays,
+        vibe,
+        preferences,
+        people,
+        budget,
+        weather,
+        route,
       });
-    });
 
-    console.log(`[ItineraryAgent] Gemini itinerary generated (${itineraryDays.length} day(s))`);
+      const parsed = await generateJSON(prompt, "gemini-2.5-flash", 8192);
+      allDays = parsed.days || parsed.itinerary?.days || [];
+      allDays.forEach((day) => {
+        (day.activities || []).forEach((act) => {
+          if (!act.source) act.source = "ai";
+        });
+      });
+
+      console.log(`[ItineraryAgent] Single-chunk complete (${allDays.length} days)`);
+
+      return {
+        available: true,
+        destination: parsed.destination || destination,
+        days: allDays,
+        highlights: parsed.highlights || [],
+        packing_tips: parsed.packing_tips || [],
+        local_cuisine: parsed.local_cuisine || [],
+        generatedByAI: true,
+      };
+    }
+
+    // ── Multi-chunk: generate each chunk sequentially then merge ────────────
+    // Sequential (not parallel) to avoid Gemini rate limits
+    for (const chunkDays of chunks) {
+      console.log(`[ItineraryAgent] Generating chunk: days ${chunkDays[0]}-${chunkDays[chunkDays.length - 1]}`);
+
+      const chunkArgs = { destination, origin, totalDays: safeDays, chunkDays, vibe, preferences, people, weather, route, budget };
+      let chunkResult = await generateChunk(chunkArgs);
+
+      // Validate — retry once if Gemini returned fewer days than requested
+      const returnedDayNums = new Set(chunkResult.map((d) => d.day));
+      const missingInChunk = chunkDays.filter((d) => !returnedDayNums.has(d));
+
+      if (missingInChunk.length > 0) {
+        console.warn(`[ItineraryAgent] Chunk [${chunkDays}] missing days [${missingInChunk}] — retrying chunk once`);
+        try {
+          chunkResult = await generateChunk(chunkArgs);
+        } catch (retryErr) {
+          console.error(`[ItineraryAgent] Chunk retry failed: ${retryErr.message}`);
+        }
+      }
+
+      allDays.push(...chunkResult);
+    }
+
+    // Sort by day number and ensure all expected days are present
+    allDays.sort((a, b) => (a.day || 0) - (b.day || 0));
+
+    // Fill any missing days with fallback
+    const presentDays = new Set(allDays.map((d) => d.day));
+    const fallback = buildFallbackItinerary({ destination, days: safeDays, people, vibe, weather, route, budget });
+
+    for (const fb of fallback.days) {
+      if (!presentDays.has(fb.day)) {
+        console.warn(`[ItineraryAgent] Day ${fb.day} missing from chunks — using fallback`);
+        allDays.push(fb);
+      }
+    }
+
+    allDays.sort((a, b) => (a.day || 0) - (b.day || 0));
+
+    console.log(`[ItineraryAgent] Multi-chunk complete — total days: ${allDays.length}`);
+
+    // Get highlights/tips from a quick meta prompt
+    let highlights = [];
+    let packing_tips = [];
+    let local_cuisine = [];
+
+    try {
+      const metaPrompt = `
+You are a travel expert. For a ${safeDays}-day trip to ${destination} with a ${vibe || "balanced"} vibe, return ONLY valid JSON (no markdown):
+
+{
+  "highlights": ["highlight 1", "highlight 2", "highlight 3"],
+  "packing_tips": ["tip 1", "tip 2", "tip 3"],
+  "local_cuisine": ["dish 1", "dish 2", "dish 3"]
+}
+      `.trim();
+
+      const meta = await generateJSON(metaPrompt, "gemini-2.5-flash", 512);
+      highlights    = meta.highlights    || [];
+      packing_tips  = meta.packing_tips  || [];
+      local_cuisine = meta.local_cuisine || [];
+    } catch {
+      highlights    = fallback.highlights;
+      packing_tips  = fallback.packing_tips;
+      local_cuisine = fallback.local_cuisine;
+    }
 
     return {
       available: true,
-      destination: parsed.destination || destination,
-      days: itineraryDays,
-      highlights: parsed.highlights || [],
-      packing_tips: parsed.packing_tips || [],
-      local_cuisine: parsed.local_cuisine || [],
+      destination,
+      days: allDays,
+      highlights,
+      packing_tips,
+      local_cuisine,
       generatedByAI: true,
     };
+
   } catch (error) {
     console.error("[ItineraryAgent] Gemini error:", error.message);
     const fallback = buildFallbackItinerary({

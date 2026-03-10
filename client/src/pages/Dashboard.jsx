@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, LogOut, Plane, Users, Search, Sun, Moon, MapPin, Sparkles } from "lucide-react";
+import { LogOut, Plane, Users, Search, Sun, Moon, MapPin, Sparkles } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
 import { useTripStore } from "../store/tripStore";
 import { useSocketStore } from "../store/socketStore";
@@ -140,12 +140,6 @@ export default function Dashboard() {
             >
               <Users size={15} /> Join Trip
             </button>
-            <button
-              onClick={() => navigate("/trip/new")}
-              className="btn-primary text-sm"
-            >
-              <Plus size={15} /> New Trip
-            </button>
           </div>
         </div>
 
@@ -244,9 +238,6 @@ export default function Dashboard() {
             <div className="flex items-center justify-center gap-3 flex-wrap">
               <button onClick={() => navigate("/ai-planner")} className="btn-primary text-sm">
                 <Sparkles size={15} /> AI Planner
-              </button>
-              <button onClick={() => navigate("/trip/new")} className="btn-secondary text-sm">
-                <Plus size={15} /> Manual Trip
               </button>
             </div>
           </div>
