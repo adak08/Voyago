@@ -66,14 +66,48 @@ const getGeminiClient = () => {
   return new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 };
 
-/**
- * Generate JSON output from Gemini and parse it safely.
- *
- * @param {string} prompt
- * @param {string} [model="gemini-2.5-flash"]
- * @param {number} [maxOutputTokens=8192]
- * @returns {Promise<object>}
- */
+// ─── Retry with exponential backoff ──────────────────────────────────────────
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const withRetry = async (fn, { maxAttempts = 3, baseDelayMs = 2000 } = {}) => {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+
+      // Parse error code — Gemini SDK wraps it in err.error.code or err.status
+      const code =
+        err?.error?.code ||
+        err?.status ||
+        err?.code ||
+        (typeof err?.message === "string" && err.message.match(/"code":(\d+)/)?.[1]);
+
+      const isRetryable =
+        code === 503 ||
+        code === "503" ||
+        code === 429 ||
+        code === "429" ||
+        /503|429|unavailable|rate.?limit|too many/i.test(err?.message || "");
+
+      if (!isRetryable || attempt === maxAttempts) {
+        throw err;
+      }
+
+      const delay = baseDelayMs * Math.pow(2, attempt - 1); // 2s, 4s, 8s
+      console.warn(
+        `[GeminiClient] Attempt ${attempt}/${maxAttempts} failed (${code || "unknown"}) — retrying in ${delay / 1000}s...`
+      );
+      await sleep(delay);
+    }
+  }
+
+  throw lastError;
+};
+
+
 export const generateJSON = async (
   prompt,
   model = "gemini-2.5-flash-lite",
@@ -81,19 +115,20 @@ export const generateJSON = async (
 ) => {
   const ai = getGeminiClient();
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      responseMimeType: "application/json",
-      maxOutputTokens,
-    },
-  });
+  const rawText = await withRetry(async () => {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        maxOutputTokens,
+      },
+    });
 
-  const rawText = (response.text || "").trim();
-  if (!rawText) {
-    throw new Error("Gemini returned an empty response");
-  }
+    const text = (response.text || "").trim();
+    if (!text) throw new Error("Gemini returned an empty response");
+    return text;
+  });
 
   try {
     return safeParseJSON(rawText);
