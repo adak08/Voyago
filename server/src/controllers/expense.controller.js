@@ -8,7 +8,7 @@ import { getIO } from "../config/socket.config.js";
 // @POST /api/expenses - Add expense
 export const addExpense = async (req, res, next) => {
     try {
-        const {
+        let {
             tripId,
             title,
             amount,
@@ -19,6 +19,41 @@ export const addExpense = async (req, res, next) => {
             date,
             notes,
         } = req.body;
+
+        // Parse splits from FormData format if they exist as individual fields
+        if (!Array.isArray(splits) && req.body) {
+            const parsedSplits = [];
+            const splitKeys = Object.keys(req.body).filter((key) =>
+                key.startsWith("splits[")
+            );
+
+            if (splitKeys.length > 0) {
+                // Extract indices and reconstruct splits
+                const splitData = {};
+                splitKeys.forEach((key) => {
+                    const match = key.match(/splits\[(\d+)\]\[(\w+)\]/);
+                    if (match) {
+                        const idx = match[1];
+                        const field = match[2];
+                        if (!splitData[idx]) splitData[idx] = {};
+
+                        let value = req.body[key];
+                        if (field === "amount") value = parseFloat(value);
+                        if (field === "paid")
+                            value = value === "true" || value === true;
+
+                        splitData[idx][field] = value;
+                    }
+                });
+
+                // Convert to array
+                splits = Object.values(splitData).map((split) => ({
+                    user: split.user,
+                    amount: split.amount,
+                    paid: split.paid,
+                }));
+            }
+        }
 
         const trip = await Trip.findById(tripId);
         if (!trip)
@@ -34,12 +69,17 @@ export const addExpense = async (req, res, next) => {
                 .status(403)
                 .json({ success: false, message: "Not a member" });
 
+        // Ensure amount is a number
+        const numericAmount = parseFloat(amount);
+
         let finalSplits = splits;
 
         // Auto-calculate equal split
         if (splitType === "equal") {
             const memberCount = trip.members.length;
-            const perPerson = parseFloat((amount / memberCount).toFixed(2));
+            const perPerson = parseFloat(
+                (numericAmount / memberCount).toFixed(2)
+            );
             finalSplits = trip.members.map((m) => ({
                 user: m.user,
                 amount: perPerson,
@@ -50,7 +90,7 @@ export const addExpense = async (req, res, next) => {
         const expense = await Expense.create({
             tripId,
             title,
-            amount,
+            amount: numericAmount,
             category,
             paidBy: req.user.id,
             splitType,
@@ -131,12 +171,10 @@ export const deleteExpense = async (req, res, next) => {
                 .json({ success: false, message: "Expense not found" });
 
         if (expense.paidBy.toString() !== req.user.id) {
-            return res
-                .status(403)
-                .json({
-                    success: false,
-                    message: "Only expense creator can delete",
-                });
+            return res.status(403).json({
+                success: false,
+                message: "Only expense creator can delete",
+            });
         }
 
         await expense.deleteOne();
