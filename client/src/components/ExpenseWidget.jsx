@@ -120,6 +120,25 @@ export default function ExpenseWidget({ tripId, trip }) {
       }
     }
 
+    // Validate percentage splits
+    if (form.splitType === "percentage") {
+      const totalPct = form.customSplits.reduce((sum, s) => sum + s.amount, 0);
+
+      if (form.customSplits.length === 0) {
+        alert("Please add at least one person to split with");
+        setLoading(false);
+        return;
+      }
+
+      if (Math.abs(totalPct - 100) > 0.01) {
+        alert(
+          `Percentages must add up to 100% (currently ${totalPct.toFixed(2)}%)`,
+        );
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const expenseData = {
         tripId,
@@ -134,6 +153,15 @@ export default function ExpenseWidget({ tripId, trip }) {
         expenseData.splits = form.customSplits.map((s) => ({
           user: s.userId,
           amount: s.amount,
+          paid: s.userId === user?.id,
+        }));
+      }
+
+      if (form.splitType === "percentage") {
+        const totalAmount = parseFloat(form.amount);
+        expenseData.splits = form.customSplits.map((s) => ({
+          user: s.userId,
+          amount: parseFloat(((s.amount / 100) * totalAmount).toFixed(2)),
           paid: s.userId === user?.id,
         }));
       }
@@ -292,6 +320,7 @@ export default function ExpenseWidget({ tripId, trip }) {
                 >
                   <option value="equal">Equal split</option>
                   <option value="unequal">Custom split</option>
+                  <option value="percentage">Percentage split</option>
                 </select>
               </div>
             </div>
@@ -434,6 +463,179 @@ export default function ExpenseWidget({ tripId, trip }) {
                       ⚠️ Amount mismatch
                     </span>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Percentage Split Section */}
+            {form.splitType === "percentage" && (
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                    Step 1: Select Members
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedMembers(
+                        trip.members?.map((m) => m.user?._id || m.user) || [],
+                      )
+                    }
+                    className="text-xs text-primary-700 dark:text-primary-300 hover:underline"
+                  >
+                    Select All
+                  </button>
+                </div>
+
+                <div className="space-y-2 mb-4 p-3 bg-gray-50 dark:bg-surface-850 rounded-lg">
+                  {trip.members?.map((member) => {
+                    const userId = member.user?._id || member.user;
+                    const isSelected = selectedMembers.includes(userId);
+                    return (
+                      <label
+                        key={userId}
+                        className="flex items-center gap-3 p-2 bg-white dark:bg-surface-800 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-surface-750 transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleMemberSelection(userId)}
+                          className="w-4 h-4 rounded accent-primary-500"
+                        />
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-500 to-cyan-500 text-white font-bold flex items-center justify-center text-xs flex-shrink-0">
+                          {member.user?.name?.[0]?.toUpperCase() || "U"}
+                        </div>
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex-1">
+                          {member.user?.name || "Member"}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                {selectedMembers.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                        Step 2: Set Percentages (must total 100%)
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const equalPct = parseFloat(
+                            (100 / selectedMembers.length).toFixed(2),
+                          );
+                          setForm({
+                            ...form,
+                            customSplits: selectedMembers.map((userId) => ({
+                              userId,
+                              amount: equalPct,
+                            })),
+                          });
+                        }}
+                        className="text-xs bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 px-2 py-1 rounded-lg hover:bg-primary-200 dark:hover:bg-primary-900/50 transition-colors"
+                      >
+                        Split Equally ({selectedMembers.length})
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 mb-4">
+                      {trip.members?.map((member) => {
+                        const userId = member.user?._id || member.user;
+                        if (!selectedMembers.includes(userId)) return null;
+
+                        const existingSplit = form.customSplits.find(
+                          (s) => s.userId === userId,
+                        );
+                        const pctValue = existingSplit?.amount ?? "";
+                        const rupeeValue =
+                          pctValue !== "" && form.amount
+                            ? (
+                                (parseFloat(pctValue) / 100) *
+                                parseFloat(form.amount)
+                              ).toFixed(2)
+                            : null;
+
+                        return (
+                          <div
+                            key={userId}
+                            className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-surface-850 rounded-lg"
+                          >
+                            <div className="flex items-center gap-2 flex-1">
+                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary-500 to-cyan-500 text-white font-bold flex items-center justify-center text-xs">
+                                {member.user?.name?.[0]?.toUpperCase() || "U"}
+                              </div>
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {member.user?.name || "Member"}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                placeholder="0"
+                                value={pctValue}
+                                onChange={(e) =>
+                                  handleCustomSplitChange(
+                                    userId,
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-16 input-field text-sm text-right"
+                              />
+                              <span className="text-sm text-gray-500 dark:text-gray-400 w-4">
+                                %
+                              </span>
+                              {rupeeValue && (
+                                <span className="text-xs text-gray-400 dark:text-gray-500 w-16 text-right">
+                                  ≈ ₹{rupeeValue}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                <div className="flex gap-2 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedMembers([]);
+                      setForm({ ...form, customSplits: [] });
+                    }}
+                    className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Clear All
+                  </button>
+                </div>
+
+                <div className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                  Total:{" "}
+                  {form.customSplits
+                    .reduce((sum, s) => sum + s.amount, 0)
+                    .toFixed(2)}
+                  %
+                  {Math.abs(
+                    form.customSplits.reduce((sum, s) => sum + s.amount, 0) -
+                      100,
+                  ) > 0.01 &&
+                    form.customSplits.length > 0 && (
+                      <span className="text-red-500 ml-2">
+                        ⚠️ Must total 100%
+                      </span>
+                    )}
+                  {Math.abs(
+                    form.customSplits.reduce((sum, s) => sum + s.amount, 0) -
+                      100,
+                  ) <= 0.01 &&
+                    form.customSplits.length > 0 && (
+                      <span className="text-emerald-500 ml-2">✓ Good</span>
+                    )}
                 </div>
               </div>
             )}

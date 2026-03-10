@@ -87,6 +87,15 @@ export const addExpense = async (req, res, next) => {
             }));
         }
 
+        // Percentage split: frontend already converted % → amounts, just normalise
+        if (splitType === "percentage" && Array.isArray(splits)) {
+            finalSplits = splits.map((s) => ({
+                user: s.user,
+                amount: parseFloat(parseFloat(s.amount).toFixed(2)),
+                paid: s.user?.toString() === req.user.id,
+            }));
+        }
+
         const expense = await Expense.create({
             tripId,
             title,
