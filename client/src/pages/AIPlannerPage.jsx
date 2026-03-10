@@ -190,9 +190,6 @@ export default function AIPlannerPage() {
                 <span className="font-extrabold text-gray-900 dark:text-white text-sm">
                   AI Trip Planner
                 </span>
-                <span className="hidden sm:inline text-xs text-gray-400 dark:text-gray-500 ml-2">
-                  Powered by Gemini 2.5 Flash
-                </span>
               </div>
             </div>
           </div>
@@ -286,7 +283,7 @@ export default function AIPlannerPage() {
                       <input
                         type="number"
                         min="1"
-                        max="30"
+                        max="9"
                         className="input-field pl-9"
                         value={form.days}
                         onChange={set("days")}
