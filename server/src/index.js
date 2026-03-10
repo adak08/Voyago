@@ -7,6 +7,7 @@ import connectDB from "./config/db.config.js";
 import { initSocket } from "./config/socket.config.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import scheduleTripStatusCron from "./services/tripStatus.cron.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +23,7 @@ initSocket(server);
 
 
 connectDB().then(() => {
+    scheduleTripStatusCron();
     server.listen(PORT, () => {
         console.log(
             `🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`
