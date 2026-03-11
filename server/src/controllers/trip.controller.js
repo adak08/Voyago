@@ -271,6 +271,69 @@ export const leaveTrip = async (req, res, next) => {
   }
 };
 
+// @PATCH /api/trips/:id/transfer-admin - Transfer admin role to another member
+export const transferTripAdmin = async (req, res, next) => {
+  try {
+    const { newAdminId } = req.body;
+
+    if (!newAdminId) {
+      return res.status(400).json({ success: false, message: "newAdminId is required" });
+    }
+
+    const trip = await Trip.findById(req.params.id);
+    if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
+
+    if (trip.admin.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "Only admin can transfer ownership" });
+    }
+
+    if (newAdminId === req.user.id) {
+      return res.status(400).json({ success: false, message: "You are already the admin" });
+    }
+
+    const targetMember = trip.members.find((member) => member.user.toString() === newAdminId);
+    if (!targetMember) {
+      return res.status(400).json({ success: false, message: "New admin must be a trip member" });
+    }
+
+    trip.members.forEach((member) => {
+      if (member.user.toString() === newAdminId) {
+        member.role = "admin";
+      }
+
+      if (member.user.toString() === req.user.id) {
+        member.role = "member";
+      }
+    });
+
+    trip.admin = newAdminId;
+    await trip.save();
+
+    await createNotification({
+      recipient: newAdminId,
+      sender: req.user.id,
+      type: "ADMIN_TRANSFER",
+      message: `${req.user.name} transferred admin rights for \"${trip.title}\" to you`,
+      tripId: trip._id,
+    });
+
+    const populated = await trip.populate([
+      { path: "admin", select: "name avatar email" },
+      { path: "members.user", select: "name avatar email" },
+    ]);
+
+    try {
+      getIO().to(trip._id.toString()).emit("trip_admin_transferred", {
+        trip: populated,
+      });
+    } catch {}
+
+    res.json({ success: true, trip: populated });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // @PUT /api/trips/:id - Update trip
 export const updateTrip = async (req, res, next) => {
   try {

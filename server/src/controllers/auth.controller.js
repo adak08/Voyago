@@ -417,22 +417,33 @@ export const googleAuth = async (req, res, next) => {
 // @POST /api/auth/refresh
 export const refreshToken = async (req, res, next) => {
     try {
-        const { refreshToken } = req.body;
-        if (!refreshToken)
+        const { refreshToken: incomingRefreshToken } = req.body;
+        if (!incomingRefreshToken)
             return res
                 .status(401)
                 .json({ success: false, message: "No refresh token" });
 
         const decoded = jwt.verify(
-            refreshToken,
+            incomingRefreshToken,
             process.env.JWT_REFRESH_SECRET
         );
         const user = await User.findById(decoded.id).select("+refreshToken");
 
-        if (!user || user.refreshToken !== refreshToken) {
+        if (!user) {
             return res
                 .status(403)
                 .json({ success: false, message: "Invalid refresh token" });
+        }
+
+        if (user.refreshToken !== incomingRefreshToken) {
+            user.refreshToken = null;
+            await user.save({ validateBeforeSave: false });
+
+            return res.status(401).json({
+                success: false,
+                code: "TOKEN_REUSE_DETECTED",
+                message: "Refresh token reuse detected",
+            });
         }
 
         const tokens = generateTokens(user._id, user.name);

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Plane, Mail, Lock, Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { useAuthStore } from "../store/authStore";
@@ -11,6 +11,14 @@ export default function Login() {
   const { login, loading, error, clearError } = useAuthStore();
   const { dark, toggle } = useThemeStore();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const securityMessage = sessionStorage.getItem("authMessage");
+    if (!securityMessage) return;
+
+    useAuthStore.setState({ error: securityMessage });
+    sessionStorage.removeItem("authMessage");
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

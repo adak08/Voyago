@@ -7,8 +7,8 @@ import { Readable } from "stream";
 export const getMessages = async (req, res, next) => {
   try {
     const { tripId } = req.params;
-    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 100);
+    const before = req.query.before;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 100);
 
     const trip = await Trip.findById(tripId);
     if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
@@ -16,18 +16,37 @@ export const getMessages = async (req, res, next) => {
     const isMember = trip.members.some((m) => m.user.toString() === req.user.id);
     if (!isMember) return res.status(403).json({ success: false, message: "Not a member" });
 
-    const messages = await Message.find({ tripId })
+    const query = { tripId };
+
+    if (before) {
+      const cursorMessage = await Message.findOne({ _id: before, tripId }).select("createdAt");
+
+      if (cursorMessage) {
+        query.createdAt = { $lt: cursorMessage.createdAt };
+      }
+    }
+
+    const messages = await Message.find(query)
       .populate("sender", "name avatar")
       .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
       .limit(limit);
 
-    const total = await Message.countDocuments({ tripId });
+    const oldest = messages[messages.length - 1] || null;
+    let hasMore = false;
+
+    if (oldest) {
+      const olderCount = await Message.countDocuments({
+        tripId,
+        createdAt: { $lt: oldest.createdAt },
+      });
+      hasMore = olderCount > 0;
+    }
 
     res.json({
       success: true,
       messages: messages.reverse(),
-      pagination: { total, page, pages: Math.ceil(total / limit), limit },
+      hasMore,
+      nextCursor: hasMore && oldest ? oldest._id : null,
     });
   } catch (err) {
     next(err);

@@ -1,4 +1,6 @@
 import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
+import Redis from "ioredis";
 import jwt from "jsonwebtoken";
 import Message from "../models/message.model.js";
 import Trip from "../models/trip.model.js";
@@ -19,6 +21,41 @@ const initSocket = (server) => {
       credentials: true,
     },
   });
+
+  if (process.env.REDIS_URL) {
+    const redisConfig = {
+      lazyConnect: true,
+      enableOfflineQueue: false,
+      maxRetriesPerRequest: 1,
+      retryStrategy: () => null,
+      reconnectOnError: () => false,
+    };
+
+    const pubClient = new Redis(process.env.REDIS_URL, redisConfig);
+    const subClient = pubClient.duplicate(redisConfig);
+
+    pubClient.on("error", (err) => {
+      console.error("Redis pub client error:", err.message);
+    });
+
+    subClient.on("error", (err) => {
+      console.error("Redis sub client error:", err.message);
+    });
+
+    Promise.all([pubClient.connect(), subClient.connect()])
+      .then(() => {
+        io.adapter(createAdapter(pubClient, subClient));
+        console.log("Socket.IO using Redis adapter");
+      })
+      .catch((err) => {
+        console.error("Redis adapter setup failed:", err.message);
+        pubClient.disconnect();
+        subClient.disconnect();
+        console.log("Socket.IO using in-memory adapter (single server only)");
+      });
+  } else {
+    console.log("Socket.IO using in-memory adapter (single server only)");
+  }
 
   // Auth middleware for socket
   io.use((socket, next) => {

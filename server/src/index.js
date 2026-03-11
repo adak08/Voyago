@@ -1,5 +1,4 @@
 import dotenv from "dotenv";
-dotenv.config();
 
 import http from "http";
 import app from "./app.js";
@@ -11,7 +10,7 @@ import scheduleTripStatusCron from "./services/tripStatus.cron.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// dotenv.config({ path: path.resolve(__dirname, "../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const PORT = process.env.PORT || 5000;
 
@@ -34,5 +33,14 @@ connectDB().then(() => {
 // Handle unhandled promise rejections
 process.on("unhandledRejection", (err) => {
     console.error("Unhandled Rejection:", err.message);
+
+    const redisConnectionIssue =
+        /WRONGPASS|NOAUTH|Redis|ECONNREFUSED/i.test(err.message || "");
+
+    if (redisConnectionIssue) {
+        console.error("Continuing with in-memory Socket.IO adapter");
+        return;
+    }
+
     server.close(() => process.exit(1));
 });
