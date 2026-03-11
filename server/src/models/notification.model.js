@@ -15,6 +15,7 @@ const notificationSchema = new mongoose.Schema(
             type: String,
             enum: [
                 "TRIP_INVITE",
+                "ADMIN_TRANSFER",
                 "NEW_EXPENSE",
                 "SETTLEMENT_REQUEST",
                 "SETTLEMENT_DONE",
