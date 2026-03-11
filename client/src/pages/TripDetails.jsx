@@ -535,16 +535,73 @@ function InfoPill({ icon, label, value }) {
 }
 
 function MembersSection({ trip, userId, isAdmin, onCopyInvite }) {
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteStatus, setInviteStatus] = useState(null); // null | "sending" | "sent" | "error"
+  const [inviteError, setInviteError] = useState("");
+
+  const handleSendInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    setInviteStatus("sending");
+    setInviteError("");
+    try {
+      await tripService.sendInviteEmail(trip._id, inviteEmail.trim());
+      setInviteStatus("sent");
+      setInviteEmail("");
+      setTimeout(() => setInviteStatus(null), 3000);
+    } catch (err) {
+      setInviteError(err.response?.data?.message || "Failed to send invite");
+      setInviteStatus("error");
+    }
+  };
+
   return (
-    <section className="space-y-3">
+    <section className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="section-title">Members ({trip.members?.length || 0})</h2>
         {isAdmin && (
           <button onClick={onCopyInvite} className="btn-secondary text-sm">
-            <Copy size={14} /> Invite Member
+            <Copy size={14} /> Copy Invite Code
           </button>
         )}
       </div>
+
+      {/* Invite by email — admin only */}
+      {isAdmin && (
+        <div className="card p-4 space-y-2">
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+            Invite via Email
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              className="input-field flex-1"
+              placeholder="friend@example.com"
+              value={inviteEmail}
+              onChange={(e) => {
+                setInviteEmail(e.target.value);
+                setInviteStatus(null);
+                setInviteError("");
+              }}
+              onKeyDown={(e) => e.key === "Enter" && handleSendInvite()}
+            />
+            <button
+              className="btn-primary text-sm whitespace-nowrap"
+              onClick={handleSendInvite}
+              disabled={inviteStatus === "sending" || !inviteEmail.trim()}
+            >
+              {inviteStatus === "sending" ? "Sending..." : "Send Invite"}
+            </button>
+          </div>
+          {inviteStatus === "sent" && (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400">
+              ✓ Invite sent successfully!
+            </p>
+          )}
+          {inviteStatus === "error" && (
+            <p className="text-xs text-red-500">{inviteError}</p>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {trip.members?.map((member) => (
