@@ -79,6 +79,23 @@ export const useTripStore = create((set, get) => ({
     }));
   },
 
+  syncTripSnapshot: (trip) => {
+    if (!trip?._id) return;
+
+    set((state) => ({
+      currentTrip: state.currentTrip?._id === trip._id ? trip : state.currentTrip,
+      trips: state.trips.map((item) => (item._id === trip._id ? trip : item)),
+    }));
+  },
+
+  transferAdmin: async (tripId, newAdminId) => {
+    const res = await tripService.transferAdmin(tripId, newAdminId);
+
+    get().syncTripSnapshot(res.trip);
+
+    return res.trip;
+  },
+
   // Expenses
   fetchExpenses: async (tripId) => {
     const data = await expenseService.getTripExpenses(tripId);

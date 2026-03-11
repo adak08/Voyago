@@ -7,7 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 
 const TYPE_ICONS = {
   TRIP_INVITE: "✈️", NEW_EXPENSE: "💳", SETTLEMENT_REQUEST: "💸",
-  NEW_MESSAGE: "💬", ITINERARY_UPDATE: "🗺️", MEMBER_JOINED: "👋", MEMBER_LEFT: "👋",
+  ADMIN_TRANSFER: "👑", NEW_MESSAGE: "💬", ITINERARY_UPDATE: "🗺️", MEMBER_JOINED: "👋", MEMBER_LEFT: "👋",
 };
 
 export default function NotificationBell() {

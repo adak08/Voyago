@@ -10,6 +10,8 @@ export default function ChatBox({ tripId }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const { user } = useAuthStore();
   const {
     messages,
@@ -25,12 +27,14 @@ export default function ChatBox({ tripId }) {
   } = useSocketStore();
   const bottomRef = useRef(null);
   const typingTimer = useRef(null);
+  const skipAutoScrollRef = useRef(false);
 
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const data = await tripService.getMessages(tripId);
+        const data = await tripService.getMessages(tripId, { limit: 20 });
         setMessages(data.messages);
+        setHasMore(!!data.hasMore);
         markMessagesSeen(tripId);
       } catch {}
       setLoading(false);
@@ -39,10 +43,37 @@ export default function ChatBox({ tripId }) {
   }, [tripId, setMessages, markMessagesSeen]);
 
   useEffect(() => {
+    if (skipAutoScrollRef.current) {
+      skipAutoScrollRef.current = false;
+      return;
+    }
+
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => () => clearTimeout(typingTimer.current), []);
+
+  const handleLoadOlder = async () => {
+    const oldestMessageId = messages?.[0]?._id;
+    if (!oldestMessageId || loadingOlder || !hasMore) return;
+
+    setLoadingOlder(true);
+
+    try {
+      const data = await tripService.getMessages(tripId, {
+        before: oldestMessageId,
+        limit: 20,
+      });
+
+      const existing = useSocketStore.getState().messages || [];
+      skipAutoScrollRef.current = true;
+      setMessages([...(data.messages || []), ...existing]);
+      setHasMore(!!data.hasMore);
+    } catch {
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
 
   const submitMessage = useCallback(
     ({ message = "", type = "text", mediaUrl = "", fileName = "" }) => {
@@ -196,6 +227,26 @@ export default function ChatBox({ tripId }) {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-5 bg-[var(--bg-2)]">
+        {!loading && hasMore && (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={handleLoadOlder}
+              disabled={loadingOlder}
+              className="btn-secondary text-xs"
+            >
+              {loadingOlder ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="w-3 h-3 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                  Loading...
+                </span>
+              ) : (
+                "Load older messages"
+              )}
+            </button>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex justify-center items-center h-full">
             <div className="w-8 h-8 border-[3px] border-primary-500/20 border-t-primary-500 rounded-full animate-spin" />

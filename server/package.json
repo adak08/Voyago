@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.44.0",
+    "@socket.io/redis-adapter": "^8.3.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
     "cors": "^2.8.5",
@@ -19,6 +20,7 @@
     "express-rate-limit": "^7.1.5",
     "express-validator": "^7.0.1",
     "google-auth-library": "^9.4.1",
+    "ioredis": "^5.10.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.0.3",
     "multer": "^1.4.5-lts.1",

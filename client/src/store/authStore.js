@@ -87,7 +87,11 @@ export const useAuthStore = create(
           const data = await authService.refreshToken(refreshToken);
           get().setTokens(data.accessToken, data.refreshToken);
           return data.accessToken;
-        } catch {
+        } catch (err) {
+          if (err?.response?.data?.code === "TOKEN_REUSE_DETECTED") {
+            throw err;
+          }
+
           get().logout();
           return null;
         }

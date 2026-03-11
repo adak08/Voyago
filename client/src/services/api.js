@@ -65,6 +65,16 @@ api.interceptors.response.use(
           return api(original);
         }
       } catch (refreshError) {
+        if (refreshError?.response?.data?.code === "TOKEN_REUSE_DETECTED") {
+          const { useAuthStore } = await import("../store/authStore");
+          await useAuthStore.getState().logout();
+          sessionStorage.setItem(
+            "authMessage",
+            "Session invalidated for security. Please log in again.",
+          );
+          window.location.href = "/login";
+        }
+
         processQueue(refreshError, null);
         return Promise.reject(refreshError);
       } finally {

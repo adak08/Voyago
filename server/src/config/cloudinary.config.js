@@ -98,3 +98,40 @@ export const chatUpload = multer({
 });
 
 export { cloudinary };
+
+  // ─── Receipt upload (expense receipts: images + PDF) ─────────────────────────
+  const ALLOWED_RECEIPT_TYPES = [
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "application/pdf",
+  ];
+
+  const receiptFileFilter = (req, file, cb) => {
+    if (ALLOWED_RECEIPT_TYPES.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(
+        new Error(
+          `Invalid receipt type: ${file.mimetype}. Use JPG, PNG, WEBP, HEIC, or PDF.`
+        ),
+        false
+      );
+    }
+  };
+
+  const receiptStorage = new CloudinaryStorage({
+    cloudinary,
+    params: {
+      folder: "smart-trip-planner/receipts",
+      resource_type: "auto",
+    },
+  });
+
+  export const receiptUpload = multer({
+    storage: receiptStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: receiptFileFilter,
+  });

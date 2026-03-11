@@ -51,6 +51,7 @@ export default function TripDetails() {
     fetchTrip,
     setItinerary,
     loading,
+    transferAdmin,
     updateTrip,
     deleteTrip,
     leaveTrip,
@@ -259,6 +260,11 @@ export default function TripDetails() {
     });
   };
 
+  const handleTransferAdmin = async (newAdminId) => {
+    if (!id) return;
+    await transferAdmin(id, newAdminId);
+  };
+
   if (loading && !currentTrip) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -376,6 +382,7 @@ export default function TripDetails() {
             userId={user?.id}
             isAdmin={isAdmin}
             onCopyInvite={handleCopyInvite}
+            onTransferAdmin={handleTransferAdmin}
           />
         )}
 
@@ -534,10 +541,17 @@ function InfoPill({ icon, label, value }) {
   );
 }
 
-function MembersSection({ trip, userId, isAdmin, onCopyInvite }) {
+function MembersSection({ trip, userId, isAdmin, onCopyInvite, onTransferAdmin }) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteStatus, setInviteStatus] = useState(null); // null | "sending" | "sent" | "error"
   const [inviteError, setInviteError] = useState("");
+  const [transferringId, setTransferringId] = useState("");
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 2800);
+  };
 
   const handleSendInvite = async () => {
     if (!inviteEmail.trim()) return;
@@ -551,6 +565,32 @@ function MembersSection({ trip, userId, isAdmin, onCopyInvite }) {
     } catch (err) {
       setInviteError(err.response?.data?.message || "Failed to send invite");
       setInviteStatus("error");
+    }
+  };
+
+  const handleMakeAdmin = async (member) => {
+    const memberId = member.user?._id || member.user;
+    const memberName = member.user?.name || "this member";
+
+    if (!memberId || !onTransferAdmin) return;
+
+    const confirmed = window.confirm(
+      `Transfer admin rights to ${memberName}? You will become a regular member.`,
+    );
+    if (!confirmed) return;
+
+    setTransferringId(memberId);
+
+    try {
+      await onTransferAdmin(memberId);
+      showToast(`Admin rights transferred to ${memberName}`);
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to transfer admin rights",
+        "error",
+      );
+    } finally {
+      setTransferringId("");
     }
   };
 
@@ -623,18 +663,46 @@ function MembersSection({ trip, userId, isAdmin, onCopyInvite }) {
                 </p>
               </div>
             </div>
-            <span
-              className={`badge text-xs ${
-                member.role === "admin"
-                  ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-                  : "bg-gray-100 dark:bg-surface-800 text-gray-600 dark:text-gray-400"
-              }`}
-            >
-              {member.role}
-            </span>
+            <div className="flex items-center gap-2">
+              {isAdmin && member.role !== "admin" && (
+                <button
+                  className="btn-secondary text-xs"
+                  onClick={() => handleMakeAdmin(member)}
+                  disabled={transferringId === (member.user?._id || member.user)}
+                >
+                  {transferringId === (member.user?._id || member.user)
+                    ? "Transferring..."
+                    : "Make Admin"}
+                </button>
+              )}
+
+              <span
+                className={`badge text-xs ${
+                  member.role === "admin"
+                    ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                    : "bg-gray-100 dark:bg-surface-800 text-gray-600 dark:text-gray-400"
+                }`}
+              >
+                {member.role}
+              </span>
+            </div>
           </div>
         ))}
       </div>
+
+      {toast && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div
+            className={`px-4 py-2 rounded-lg text-sm shadow-lg border ${
+              toast.type === "error"
+                ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800"
+                : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800"
+            }`}
+          >
+            {toast.message}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

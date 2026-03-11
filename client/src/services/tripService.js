@@ -25,6 +25,10 @@ export const tripService = {
     const res = await api.delete(`/trips/${id}/leave`);
     return res.data;
   },
+  transferAdmin: async (id, newAdminId) => {
+    const res = await api.patch(`/trips/${id}/transfer-admin`, { newAdminId });
+    return res.data;
+  },
   updateTrip: async (id, data) => {
     const res = await api.put(`/trips/${id}`, data);
     return res.data;
@@ -37,8 +41,17 @@ export const tripService = {
     const res = await api.post(`/trips/${id}/upload`, formData);
     return res.data;
   },
-  getMessages: async (tripId, page = 1) => {
-    const res = await api.get(`/trips/${tripId}/messages?page=${page}`);
+  getMessages: async (tripId, { before, limit = 20 } = {}) => {
+    const params = new URLSearchParams();
+    if (before) params.set("before", before);
+    if (limit) params.set("limit", String(limit));
+
+    const query = params.toString();
+    const url = query
+      ? `/trips/${tripId}/messages?${query}`
+      : `/trips/${tripId}/messages`;
+
+    const res = await api.get(url);
     return res.data;
   },
   uploadChatMedia: async (formData) => {

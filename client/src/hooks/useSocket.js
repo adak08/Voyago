@@ -6,7 +6,7 @@ import { useAuthStore } from "../store/authStore";
 export const useSocket = (tripId) => {
   const { token } = useAuthStore();
   const { connect, disconnect, socket, joinTrip, leaveTrip } = useSocketStore();
-  const { onExpenseAdded, setItinerary, appendTripPhoto } = useTripStore();
+  const { onExpenseAdded, setItinerary, appendTripPhoto, syncTripSnapshot } = useTripStore();
 
   // Connect socket on mount
   useEffect(() => {
@@ -46,6 +46,12 @@ export const useSocket = (tripId) => {
       appendTripPhoto(payload);
     });
 
+    socket.on("trip_admin_transferred", ({ trip }) => {
+      if (trip?._id) {
+        syncTripSnapshot(trip);
+      }
+    });
+
     // Typing indicator
     socket.on("user_typing", ({ userId, name, isTyping }) => {
       const { addTypingUser, removeTypingUser } = useSocketStore.getState();
@@ -67,6 +73,7 @@ export const useSocket = (tripId) => {
       socket.off("expense_added");
       socket.off("itinerary_synced");
       socket.off("trip_photo_uploaded");
+      socket.off("trip_admin_transferred");
       socket.off("user_typing");
       socket.off("message_seen");
       socket.off("reaction_updated");
