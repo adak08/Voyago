@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+**/node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+ENV/
+.Python
+
+# Environment files (SENSITIVE - never commit)
+.env
+.env.local
+.env.*.local
+.env.example (only in subdirs, not root)
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.iml
+.DS_Store
+
+# Build outputs
+/client/dist
+/server/dist
+build/
+
+# Logs
+*.log
+logs/
+
+# Testing
+.coverage
+.pytest_cache/
+coverage/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Misc
+.tmp/
+temp/
+*.bak
