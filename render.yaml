@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: voyago
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    port: 5000
+    envVars:
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: OPENWEATHER_KEY
+        sync: false
+      - key: ORS_API_KEY
+        sync: false
+      - key: VITE_API_URL
+        sync: false
+      - key: PYTHON_SERVICE_URL
+        value: http://localhost:8000
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
