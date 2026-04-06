@@ -1,10 +1,11 @@
+from dotenv import load_dotenv
+from pathlib import Path
+
+load_dotenv(dotenv_path=Path(__file__).with_name(".env"), override=True)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes.plan import router
-from dotenv import load_dotenv
-import os
-
-load_dotenv()
 
 app = FastAPI(title="Voyago AI Service", version="2.0.0")
 
@@ -13,7 +14,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5000",
         "http://localhost:5173",
-        "https://voyago.onrender.com",    # update after Render deploy
+        "https://voyago.onrender.com",
     ],
     allow_methods=["*"],
     allow_headers=["*"],
