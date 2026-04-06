@@ -6,7 +6,7 @@ A full-stack **MERN** group trip planning platform with AI-powered itineraries, 
 
 ## 🚀 Features
 
-- **AI Trip Planner** — Multi-agent system (Gemini 2.5 Flash + OpenWeather + OpenRouteService) generates day-by-day itineraries with weather forecasts, route info, and budget breakdowns
+- **AI Trip Planner** — Python AI microservice (FastAPI + LangGraph + Gemini + OpenWeather + OpenRouteService) generates day-by-day itineraries with weather, route, and dynamic budget breakdowns
 - **Real-time Group Chat** — Socket.IO powered messaging with typing indicators, emoji reactions, file/media uploads, and read receipts
 - **Smart Expense Splitting** — Equal, custom, and percentage splits with balance calculation and receipt uploads
 - **Itinerary Board** — AI-generated or manually editable itinerary synced live across all members
@@ -24,7 +24,7 @@ A full-stack **MERN** group trip planning platform with AI-powered itineraries, 
 | Frontend | React 18, Vite, Tailwind CSS, Zustand, Socket.IO Client, React Router v6 |
 | Backend | Node.js, Express.js, Socket.IO |
 | Database | MongoDB + Mongoose |
-| AI | Google Gemini 2.5 Flash (`@google/genai`) |
+| AI | Python FastAPI + LangGraph + Google Gemini 2.5 Flash + OpenWeather + OpenRouteService |
 | Media | Cloudinary (photos, receipts, chat media) |
 | Email | Nodemailer |
 | Cache / Scaling | Redis (optional, for Socket.IO multi-server adapter) |
@@ -48,20 +48,25 @@ voyago/
 │   ├── vite.config.js
 │   └── package.json
 │
-└── server/                   # Express backend
-    └── src/
-        ├── config/           # DB, Cloudinary, Socket.IO setup
-        ├── controllers/      # Route handlers
-        ├── middlewares/      # Auth, error handling, rate limiting, validation
-        ├── models/           # Mongoose schemas
-        ├── routes/           # Express routers
-        ├── services/
-        │   ├── agents/       # AI agents: weather, maps, budget, itinerary
-        │   ├── ai/           # Gemini client
-        │   └── orchestrator/ # Trip planner orchestrator
-        ├── utils/            # Helpers (expense calc, OTP, invite code)
-        ├── app.js
-        └── index.js
+├── server/                   # Express backend
+│   └── src/
+│       ├── config/           # DB, Cloudinary, Socket.IO setup
+│       ├── controllers/      # Route handlers
+│       ├── middlewares/      # Auth, error handling, rate limiting, validation
+│       ├── models/           # Mongoose schemas
+│       ├── routes/           # Express routers
+│       ├── services/
+│       │   └── orchestrator/ # Calls Python AI planner service
+│       ├── utils/            # Helpers (expense calc, OTP, invite code)
+│       ├── app.js
+│       └── index.js
+│
+└── ai_service/               # Python AI planning microservice
+  ├── main.py               # FastAPI app
+  ├── routes/               # /plan, /plan-test, /agents/status
+  ├── graph/                # LangGraph nodes/workflow
+  ├── tools/                # weather, route, budget utilities
+  └── schemas/              # Request schema
 ```
 
 ---
@@ -69,6 +74,7 @@ voyago/
 ## ⚙️ Prerequisites
 
 - Node.js v18+
+- Python 3.10+
 - MongoDB (local or Atlas)
 - A Cloudinary account
 - API keys (see Environment Variables below)
@@ -96,6 +102,16 @@ npm install
 ```bash
 cd ../client
 npm install
+```
+
+### 4. Install AI service dependencies
+
+```bash
+cd ../ai_service
+python -m venv .venv
+# Windows
+.venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
 ---
@@ -138,13 +154,23 @@ EMAIL_FROM=Voyago <noreply@voyago.com>
 # Google OAuth
 GOOGLE_CLIENT_ID=your_google_client_id
 
-# AI & Agents (all optional — features degrade gracefully without them)
-GEMINI_API_KEY=your_gemini_api_key          # Required for AI itinerary generation
-OPENWEATHER_KEY=your_openweather_api_key    # For weather forecasts
-ORS_API_KEY=your_openrouteservice_key       # For route/maps data
+# Python AI service endpoint
+PYTHON_SERVICE_URL=http://127.0.0.1:8000
 
 # Redis (optional — for multi-server Socket.IO scaling)
 REDIS_URL=redis://localhost:6379
+```
+
+### AI Service — `ai_service/.env`
+
+```env
+# Gemini
+GOOGLE_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
+
+# Weather + Route
+OPENWEATHER_KEY=your_openweather_api_key
+ORS_API_KEY=your_openrouteservice_key
 ```
 
 ### Client — `client/.env` (optional)
@@ -161,7 +187,7 @@ VITE_GOOGLE_CLIENT_ID=your_google_client_id  # Falls back to server-side if not 
 
 ### Development
 
-Open two terminals:
+Open three terminals:
 
 **Terminal 1 — Backend:**
 ```bash
@@ -169,13 +195,21 @@ cd server
 npm run dev
 ```
 
-**Terminal 2 — Frontend:**
+**Terminal 2 — AI Service:**
+```bash
+cd ai_service
+# Windows
+.venv\Scripts\activate
+uvicorn main:app --reload --port 8000
+```
+
+**Terminal 3 — Frontend:**
 ```bash
 cd client
 npm run dev
 ```
 
-The app will be available at `http://localhost:5173`. The Vite dev server proxies `/api` and `/socket.io` requests to `http://localhost:5000`.
+The app will be available at `http://localhost:5173`. The backend runs on `http://localhost:5000`, and the AI service runs on `http://127.0.0.1:8000`.
 
 ### Production
 
@@ -303,19 +337,22 @@ cd ../server && npm start
 
 ---
 
-## 🤖 AI Agent Architecture
+## 🤖 AI Planning Architecture
 
-The AI planner uses a multi-agent orchestrator that runs data agents in parallel before itinerary generation:
+Trip planning now flows through a dedicated Python AI service:
 
 ```
-planTrip()
-  ├── weatherAgent    → OpenWeather API (daily forecast)
-  ├── mapsAgent       → OpenRouteService (distance, duration, travel mode)
-  ├── budgetAgent     → Rule-based cost estimation (no external API needed)
-  └── itineraryAgent  → Gemini 2.5 Flash (chunk-based generation for long trips)
+Client (AIPlannerPage)
+  -> Node API (/api/v1/ai/plan-trip)
+  -> Python AI Service (/plan)
+     ├── weather tool    -> OpenWeather
+     ├── route tool      -> OpenRouteService
+     ├── budget tool     -> baseline estimate
+     ├── planner node    -> Gemini itinerary generation
+     └── budget sync     -> recompute totals from itinerary activity costs
 ```
 
-All agents degrade gracefully — if an API key is missing, the agent returns `available: false` and generation continues.
+If weather/route APIs are unavailable, the service still returns partial results with `available: false` while itinerary generation continues.
 
 ---
 
@@ -333,7 +370,8 @@ npm test
 - The trip status cron job (upcoming → ongoing → completed) runs daily at midnight IST
 - Redis is optional; without it Socket.IO uses an in-memory adapter (single-server only)
 - Cloudinary is required for photo uploads, chat media, and expense receipts
-- Gemini API key is required for AI itinerary generation; the planner will return an error without it
+- AI planning depends on the Python service; ensure `PYTHON_SERVICE_URL` is configured and `ai_service` is running
+- Gemini key is required in `ai_service/.env` for itinerary generation
 
 ---
 

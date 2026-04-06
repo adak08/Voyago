@@ -1,9 +1,3 @@
-import { fetchWeather } from "../agents/weatherAgent.js";
-import { fetchRoute } from "../agents/mapsAgent.js";
-import { estimateBudget } from "../agents/budgetAgent.js";
-import { generateItinerary } from "../agents/itineraryAgent.js";
-
-
 const normalizeTier = (raw = "") => {
   const lower = raw.toLowerCase();
   if (["low", "budget", "cheap", "economy"].includes(lower)) return "low";
@@ -21,12 +15,10 @@ const resolveDates = (startDate, days) => {
   return { startDate: fmt(start), endDate: fmt(end) };
 };
 
-
-const safe = (promise, fallback) =>
-  promise.catch((err) => {
-    console.error("[Orchestrator] Agent error:", err.message);
-    return fallback;
-  });
+const resolvePythonServiceBaseUrl = () => {
+  const raw = process.env.PYTHON_SERVICE_URL || "http://127.0.0.1:8000";
+  return raw.replace(/\/+$/, "");
+};
 
 
 export const planTrip = async ({
@@ -51,108 +43,67 @@ export const planTrip = async ({
   const safeDays = Math.max(1, Math.min(30, Number(days) || 5));
   const safePeople = Math.max(1, Number(people) || 1);
   const tier = normalizeTier(budget);
-  const { startDate: resolvedStart, endDate: resolvedEnd } = resolveDates(
-    startDate,
-    safeDays
-  );
+  const { startDate: resolvedStart } = resolveDates(startDate, safeDays);
+  const pythonServiceBaseUrl = resolvePythonServiceBaseUrl();
 
   console.log(
-    `[Orchestrator] Planning trip: ${origin || "??"} → ${destination} | ` +
-    `${safeDays}d | ${tier} | ${safePeople} pax | ${resolvedStart}–${resolvedEnd}`
+    `[Orchestrator] Calling Python AI service: ${pythonServiceBaseUrl}/plan | ${destination} | ${safeDays}d | ${tier}`
   );
 
-  // ─── Phase 1: Run data agents in parallel ──────────────────────────────────
-  const [weather, route, budget_data] = await Promise.all([
-    safe(
-      fetchWeather(destination, safeDays),
-      { available: false, destination, forecast: [], summary: "Weather unavailable." }
-    ),
-    safe(
-      origin
-        ? fetchRoute({ origin, destination })
-        : Promise.resolve({ available: false, summary: "No origin provided." }),
-      { available: false, origin, destination, summary: "Route unavailable." }
-    ),
-    safe(
-      estimateBudget({
-        destination,
-        days: safeDays,
-        people: safePeople,
-        tier,
-        currency,
-      }),
+  let pythonRes;
+  try {
+    pythonRes = await fetch(
+      `${pythonServiceBaseUrl}/plan`,
       {
-        available: false,
-        breakdown: { transport: 0, hotel: 0, food: 0, activities: 0, total: 0 },
-        summary: "Budget estimation unavailable.",
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          destination,
+          origin,
+          days: safeDays,
+          people: safePeople,
+          budget: tier,
+          vibe,
+          preferences,
+          start_date: resolvedStart,
+          currency,
+        }),
+        signal: AbortSignal.timeout(120_000),
       }
-    ),
-  ]);
+    );
+  } catch (error) {
+    console.error("[Orchestrator] Could not reach Python AI service:", error?.message || error);
+    return {
+      success: false,
+      error: `Could not connect to AI service at ${pythonServiceBaseUrl}. Ensure ai_service is running.`,
+      generatedAt: new Date().toISOString(),
+    };
+  }
 
-  console.log(
-    `[Orchestrator] Data agents complete — ` +
-    `weather:${weather.available} route:${route.available} ` +
-    `budget:${budget_data.available}`
-  );
+  if (!pythonRes.ok) {
+    const err = await pythonRes.text();
+    console.error("[Orchestrator] Python service error:", err);
+    return {
+      success: false,
+      error: err,
+      generatedAt: new Date().toISOString()
+    };
+  }
 
-  // ─── Phase 2: Itinerary generation (Gemini) ────────────────────────────────
-  const itinerary = await safe(
-    generateItinerary({
-      destination,
-      origin,
-      days: safeDays,
-      vibe,
-      preferences,
-      people: safePeople,
-      weather,
-      route,
-      budget: budget_data,
-    }),
-    {
-      available: false,
-      destination,
-      days: [],
-      highlights: [],
-      packing_tips: [],
-      local_cuisine: [],
-      generatedByAI: false,
-      error: "Itinerary generation failed.",
-    }
-  );
+  const body = await pythonRes.json();
 
-  console.log(
-    `[Orchestrator] Itinerary generation complete — available:${itinerary.available} source:${itinerary.generatedByAI ? "ai" : "fallback"}`
-  );
-
-  // ─── Phase 3: Assemble final response ─────────────────────────────────────
-  const agentStatus = {
-    weather: weather.available ? "ok" : "unavailable",
-    route: route.available ? "ok" : "unavailable",
-    budget: budget_data.available ? "ok" : "unavailable",
-    itinerary: itinerary.available ? "ok" : "unavailable",
-  };
-
-  const meta = {
-    destination,
-    origin: origin || null,
-    days: safeDays,
-    people: safePeople,
-    budget_tier: tier,
-    vibe,
-    preferences: preferences || null,
-    start_date: resolvedStart,
-    end_date: resolvedEnd,
-    currency,
-  };
+  if (!body.success) {
+    console.error("[Orchestrator] Python returned error:", body.message);
+    return {
+      success: false,
+      error: body.message,
+      generatedAt: new Date().toISOString()
+    };
+  }
 
   return {
-    success: itinerary.available,
-    meta,
-    weather,
-    route,
-    budget: budget_data,
-    itinerary,
-    agentStatus,
+    success: true,
+    ...body.data,
     generatedAt: new Date().toISOString(),
   };
 };
