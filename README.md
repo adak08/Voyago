@@ -19,16 +19,16 @@ A full-stack **MERN** group trip planning platform with AI-powered itineraries, 
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 18, Vite, Tailwind CSS, Zustand, Socket.IO Client, React Router v6 |
-| Backend | Node.js, Express.js, Socket.IO |
-| Database | MongoDB + Mongoose |
-| AI | Python FastAPI + LangGraph + Google Gemini 2.5 Flash + OpenWeather + OpenRouteService |
-| Media | Cloudinary (photos, receipts, chat media) |
-| Email | Nodemailer |
-| Cache / Scaling | Redis (optional, for Socket.IO multi-server adapter) |
-| Auth | JWT (access + refresh tokens), Google OAuth |
+| Layer           | Technology                                                                            |
+| --------------- | ------------------------------------------------------------------------------------- |
+| Frontend        | React 18, Vite, Tailwind CSS, Zustand, Socket.IO Client, React Router v6              |
+| Backend         | Node.js, Express.js, Socket.IO                                                        |
+| Database        | MongoDB + Mongoose                                                                    |
+| AI              | Python FastAPI + LangGraph + Google Gemini 2.5 Flash + OpenWeather + OpenRouteService |
+| Media           | Cloudinary (photos, receipts, chat media)                                             |
+| Email           | Nodemailer                                                                            |
+| Cache / Scaling | Redis (optional, for Socket.IO multi-server adapter)                                  |
+| Auth            | JWT (access + refresh tokens), Google OAuth                                           |
 
 ---
 
@@ -165,7 +165,7 @@ REDIS_URL=redis://localhost:6379
 
 ```env
 # Gemini
-GOOGLE_API_KEY=your_gemini_api_key
+GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.5-flash
 
 # Weather + Route
@@ -190,12 +190,14 @@ VITE_GOOGLE_CLIENT_ID=your_google_client_id  # Falls back to server-side if not 
 Open three terminals:
 
 **Terminal 1 — Backend:**
+
 ```bash
 cd server
 npm run dev
 ```
 
 **Terminal 2 — AI Service:**
+
 ```bash
 cd ai_service
 # Windows
@@ -204,6 +206,7 @@ uvicorn main:app --reload --port 8000
 ```
 
 **Terminal 3 — Frontend:**
+
 ```bash
 cd client
 npm run dev
@@ -226,114 +229,121 @@ cd ../server && npm start
 ## 📡 API Endpoints
 
 ### Auth — `/api/v1/auth`
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/register` | Register with name, email, password |
-| POST | `/verify-otp` | Verify email OTP |
-| POST | `/resend-otp` | Resend verification OTP |
-| POST | `/login` | Email/password login |
-| POST | `/google` | Google OAuth login |
-| GET | `/google-client-id` | Get Google client ID |
-| POST | `/forgot-password` | Send password reset OTP |
-| POST | `/verify-reset-otp` | Verify reset OTP |
-| POST | `/reset-password` | Reset password with token |
-| POST | `/refresh` | Refresh access token |
-| POST | `/logout` | Logout (invalidates refresh token) |
-| GET | `/me` | Get current user |
-| PATCH | `/update-profile` | Update name / avatar |
+
+| Method | Endpoint            | Description                         |
+| ------ | ------------------- | ----------------------------------- |
+| POST   | `/register`         | Register with name, email, password |
+| POST   | `/verify-otp`       | Verify email OTP                    |
+| POST   | `/resend-otp`       | Resend verification OTP             |
+| POST   | `/login`            | Email/password login                |
+| POST   | `/google`           | Google OAuth login                  |
+| GET    | `/google-client-id` | Get Google client ID                |
+| POST   | `/forgot-password`  | Send password reset OTP             |
+| POST   | `/verify-reset-otp` | Verify reset OTP                    |
+| POST   | `/reset-password`   | Reset password with token           |
+| POST   | `/refresh`          | Refresh access token                |
+| POST   | `/logout`           | Logout (invalidates refresh token)  |
+| GET    | `/me`               | Get current user                    |
+| PATCH  | `/update-profile`   | Update name / avatar                |
 
 ### Trips — `/api/v1/trips`
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/` | Get all user trips |
-| POST | `/` | Create a new trip |
-| POST | `/ai-import` | Save an AI-generated trip |
-| POST | `/join` | Join trip via invite code |
-| GET | `/invite/:code` | Preview trip by invite code |
-| GET | `/:id` | Get trip by ID |
-| PUT | `/:id` | Update trip (admin only) |
-| DELETE | `/:id` | Delete trip (admin only) |
-| DELETE | `/:id/leave` | Leave a trip |
-| PATCH | `/:id/transfer-admin` | Transfer admin role |
-| POST | `/:id/invite-email` | Send invite via email |
-| POST | `/:id/upload` | Upload trip photo |
-| GET | `/:tripId/messages` | Get paginated chat messages |
-| POST | `/:tripId/messages` | Send a message (REST fallback) |
+
+| Method | Endpoint              | Description                    |
+| ------ | --------------------- | ------------------------------ |
+| GET    | `/`                   | Get all user trips             |
+| POST   | `/`                   | Create a new trip              |
+| POST   | `/ai-import`          | Save an AI-generated trip      |
+| POST   | `/join`               | Join trip via invite code      |
+| GET    | `/invite/:code`       | Preview trip by invite code    |
+| GET    | `/:id`                | Get trip by ID                 |
+| PUT    | `/:id`                | Update trip (admin only)       |
+| DELETE | `/:id`                | Delete trip (admin only)       |
+| DELETE | `/:id/leave`          | Leave a trip                   |
+| PATCH  | `/:id/transfer-admin` | Transfer admin role            |
+| POST   | `/:id/invite-email`   | Send invite via email          |
+| POST   | `/:id/upload`         | Upload trip photo              |
+| GET    | `/:tripId/messages`   | Get paginated chat messages    |
+| POST   | `/:tripId/messages`   | Send a message (REST fallback) |
 
 ### Expenses — `/api/v1/expenses`
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/` | Add expense (with optional receipt) |
-| GET | `/:tripId` | Get trip expenses |
-| GET | `/:tripId/balances` | Get who owes whom |
-| GET | `/:tripId/settlements` | Get settlements |
-| POST | `/settle` | Create a settlement |
-| DELETE | `/:id` | Delete expense |
+
+| Method | Endpoint               | Description                         |
+| ------ | ---------------------- | ----------------------------------- |
+| POST   | `/`                    | Add expense (with optional receipt) |
+| GET    | `/:tripId`             | Get trip expenses                   |
+| GET    | `/:tripId/balances`    | Get who owes whom                   |
+| GET    | `/:tripId/settlements` | Get settlements                     |
+| POST   | `/settle`              | Create a settlement                 |
+| DELETE | `/:id`                 | Delete expense                      |
 
 ### Itinerary — `/api/v1/itinerary`
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/:tripId` | Get itinerary |
-| PUT | `/:tripId` | Update itinerary manually |
-| POST | `/:tripId/generate` | Generate itinerary with AI |
-| POST | `/:tripId/day` | Add a day |
-| DELETE | `/:tripId/day/:dayIndex` | Remove a day |
+
+| Method | Endpoint                 | Description                |
+| ------ | ------------------------ | -------------------------- |
+| GET    | `/:tripId`               | Get itinerary              |
+| PUT    | `/:tripId`               | Update itinerary manually  |
+| POST   | `/:tripId/generate`      | Generate itinerary with AI |
+| POST   | `/:tripId/day`           | Add a day                  |
+| DELETE | `/:tripId/day/:dayIndex` | Remove a day               |
 
 ### AI Planner — `/api/v1/ai`
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/plan-trip` | Generate full AI trip plan |
-| GET | `/agents/status` | Check which API keys are configured |
+
+| Method | Endpoint         | Description                         |
+| ------ | ---------------- | ----------------------------------- |
+| POST   | `/plan-trip`     | Generate full AI trip plan          |
+| GET    | `/agents/status` | Check which API keys are configured |
 
 ### Chat — `/api/v1/chat`
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/upload` | Upload chat media file |
+
+| Method | Endpoint  | Description            |
+| ------ | --------- | ---------------------- |
+| POST   | `/upload` | Upload chat media file |
 
 ### Notifications — `/api/v1/notifications`
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/` | Get all notifications |
-| PATCH | `/read-all` | Mark all as read |
-| PATCH | `/:id/read` | Mark one as read |
-| DELETE | `/:id` | Delete notification |
+
+| Method | Endpoint    | Description           |
+| ------ | ----------- | --------------------- |
+| GET    | `/`         | Get all notifications |
+| PATCH  | `/read-all` | Mark all as read      |
+| PATCH  | `/:id/read` | Mark one as read      |
+| DELETE | `/:id`      | Delete notification   |
 
 ---
 
 ## 🗄️ Database Models
 
-| Model | Description |
-|---|---|
-| `User` | Auth, profile, Google OAuth, refresh token |
-| `Trip` | Title, destination, dates, members, invite code, photos |
-| `Itinerary` | AI-generated or manual day-by-day plan, weather/route/budget data |
-| `Expense` | Amount, category, paidBy, splits (equal/unequal/percentage), receipt |
-| `Settlement` | Payment records between trip members |
-| `Message` | Chat messages with media support and emoji reactions |
-| `Notification` | In-app notifications for trip events |
-| `OTP` | Email verification and password reset OTPs (TTL-indexed) |
+| Model          | Description                                                          |
+| -------------- | -------------------------------------------------------------------- |
+| `User`         | Auth, profile, Google OAuth, refresh token                           |
+| `Trip`         | Title, destination, dates, members, invite code, photos              |
+| `Itinerary`    | AI-generated or manual day-by-day plan, weather/route/budget data    |
+| `Expense`      | Amount, category, paidBy, splits (equal/unequal/percentage), receipt |
+| `Settlement`   | Payment records between trip members                                 |
+| `Message`      | Chat messages with media support and emoji reactions                 |
+| `Notification` | In-app notifications for trip events                                 |
+| `OTP`          | Email verification and password reset OTPs (TTL-indexed)             |
 
 ---
 
 ## 🔌 Socket.IO Events
 
-| Event | Direction | Description |
-|---|---|---|
-| `join_trip` | Client → Server | Join a trip room |
-| `leave_trip` | Client → Server | Leave a trip room |
-| `send_message` | Client → Server | Send a chat message |
-| `receive_message` | Server → Client | New message broadcast |
-| `typing` | Client → Server | Typing indicator |
-| `user_typing` | Server → Client | Typing broadcast |
-| `message_seen` | Client ↔ Server | Mark messages as read |
-| `add_reaction` | Client → Server | Add emoji reaction |
-| `remove_reaction` | Client → Server | Remove emoji reaction |
-| `reaction_updated` | Server → Client | Reaction state broadcast |
-| `expense_added` | Server → Client | New expense sync |
-| `itinerary_synced` | Server → Client | Itinerary update sync |
-| `trip_photo_uploaded` | Server → Client | New photo sync |
-| `trip_admin_transferred` | Server → Client | Admin change sync |
-| `new_notification` | Server → Client | Real-time notification |
+| Event                    | Direction       | Description              |
+| ------------------------ | --------------- | ------------------------ |
+| `join_trip`              | Client → Server | Join a trip room         |
+| `leave_trip`             | Client → Server | Leave a trip room        |
+| `send_message`           | Client → Server | Send a chat message      |
+| `receive_message`        | Server → Client | New message broadcast    |
+| `typing`                 | Client → Server | Typing indicator         |
+| `user_typing`            | Server → Client | Typing broadcast         |
+| `message_seen`           | Client ↔ Server | Mark messages as read    |
+| `add_reaction`           | Client → Server | Add emoji reaction       |
+| `remove_reaction`        | Client → Server | Remove emoji reaction    |
+| `reaction_updated`       | Server → Client | Reaction state broadcast |
+| `expense_added`          | Server → Client | New expense sync         |
+| `itinerary_synced`       | Server → Client | Itinerary update sync    |
+| `trip_photo_uploaded`    | Server → Client | New photo sync           |
+| `trip_admin_transferred` | Server → Client | Admin change sync        |
+| `new_notification`       | Server → Client | Real-time notification   |
 
 ---
 

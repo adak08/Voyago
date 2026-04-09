@@ -1,12 +1,11 @@
 import os
 import json
-import asyncio
 from langchain_google_genai import ChatGoogleGenerativeAI
 from graph.state import GraphState
 
 llm = ChatGoogleGenerativeAI(
     model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
-    google_api_key=os.getenv("GOOGLE_API_KEY"),
+    google_api_key=os.getenv("GEMINI_API_KEY"),
     temperature=0.7,
     convert_system_message_to_human=True,
 )
@@ -16,47 +15,15 @@ Always return valid JSON only. Never use markdown fences or code blocks.
 Generate realistic, specific, location-accurate itineraries.
 Every activity must have real place names, accurate timings, and practical local tips."""
 
-FALLBACK_DAY_TEMPLATE = {
-    "title": "Day {day} in {destination}",
-    "weather_note": "Check local weather",
-    "day_summary": "Explore {destination} at your own pace",
-    "estimated_day_cost": None,
-    "activities": [
-        {
-            "time": "09:00 AM",
-            "title": "Morning Exploration",
-            "description": "Explore local attractions in {destination}",
-            "location": "{destination}",
-            "category": "activity",
-            "cost": 500,
-            "duration_minutes": 120,
-            "tips": "Ask hotel staff for local recommendations",
-            "source": "ai"
-        },
-        {
-            "time": "01:00 PM",
-            "title": "Local Lunch",
-            "description": "Try local cuisine at a nearby restaurant",
-            "location": "Local restaurant in {destination}",
-            "category": "food",
-            "cost": 400,
-            "duration_minutes": 60,
-            "tips": "Ask locals for restaurant recommendations",
-            "source": "ai"
-        },
-        {
-            "time": "04:00 PM",
-            "title": "Evening Activity",
-            "description": "Evening leisure in {destination}",
-            "location": "{destination}",
-            "category": "activity",
-            "cost": 300,
-            "duration_minutes": 90,
-            "tips": "Carry water and sunscreen",
-            "source": "ai"
-        }
-    ]
-}
+def _unique_non_empty(items, limit=8) -> list:
+    unique = []
+    for item in items:
+        text = str(item).strip() if item is not None else ""
+        if text and text not in unique:
+            unique.append(text)
+        if len(unique) >= limit:
+            break
+    return unique
 
 async def planner_node(state: GraphState) -> GraphState:
     """
@@ -76,6 +43,9 @@ async def planner_node(state: GraphState) -> GraphState:
         preferences = state.get("preferences", "")
         start_date = state.get("start_date")
         currency = state.get("currency", "INR")
+        critic_issues = state.get("issues", []) or []
+        iteration = int(state.get("iteration", 0) or 0)
+        revised = bool(state.get("revised", False))
 
         # Determine if we need to chunk
         if days <= 3:
@@ -86,9 +56,23 @@ async def planner_node(state: GraphState) -> GraphState:
                 chunks.append(days % 3)
 
         all_days = []
+        all_highlights = []
+        all_packing_tips = []
+        all_local_cuisine = []
         day_counter = 1
 
         for chunk_size in chunks:
+            critic_guidance = ""
+            if revised and critic_issues:
+                issues_text = "\n".join([f"- {issue}" for issue in critic_issues])
+                critic_guidance = f"""
+
+REVISION CONTEXT:
+- This is revision attempt #{iteration} after critic validation.
+- You MUST fix all issues below in this output:
+{issues_text}
+"""
+
             user_prompt = f"""Generate a detailed {chunk_size}-day travel itinerary for {people} people
 going from {state.get('origin', '')} to {destination}.
 
@@ -107,6 +91,8 @@ Route information:
 
 Budget breakdown:
 {json.dumps(budget, indent=2)}
+
+{critic_guidance}
 
 IMPORTANT RULES:
 1. Generate EXACTLY {chunk_size} day objects — no more, no less
@@ -163,6 +149,10 @@ IMPORTANT RULES:
                 response_text = response_text.strip()
 
             itinerary_chunk = json.loads(response_text)
+
+            all_highlights.extend(itinerary_chunk.get("highlights", []))
+            all_packing_tips.extend(itinerary_chunk.get("packing_tips", []))
+            all_local_cuisine.extend(itinerary_chunk.get("local_cuisine", []))
             
             # Renumber days
             for day_obj in itinerary_chunk.get("days", []):
@@ -220,9 +210,21 @@ IMPORTANT RULES:
         state["itinerary"] = {
             "available": True,
             "destination": destination,
-            "highlights": ["Popular attraction 1", "Popular attraction 2", "Popular attraction 3"],
-            "packing_tips": ["Check weather forecast", "Pack comfortable shoes", "Carry sunscreen"],
-            "local_cuisine": ["Local dish 1", "Local dish 2", "Local dish 3"],
+            "highlights": _unique_non_empty(all_highlights) or [
+                "Must-visit local landmarks",
+                "Local neighborhood exploration",
+                "Sunset viewpoint"
+            ],
+            "packing_tips": _unique_non_empty(all_packing_tips) or [
+                "Check weather forecast before departure",
+                "Pack comfortable walking shoes",
+                "Carry sunscreen and a reusable water bottle"
+            ],
+            "local_cuisine": _unique_non_empty(all_local_cuisine) or [
+                "Regional specialty dishes",
+                "Street food favorites",
+                "Popular local dessert"
+            ],
             "generatedByAI": True,
             "days": all_days
         }

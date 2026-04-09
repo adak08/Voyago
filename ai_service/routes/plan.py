@@ -43,12 +43,12 @@ def agents_status():
     """
     Returns which API keys are configured in environment.
     """
-    google_key    = os.getenv("GOOGLE_API_KEY", "")
+    gemini_key    = os.getenv("GEMINI_API_KEY", "")
     weather_key   = os.getenv("OPENWEATHER_KEY", "")
     ors_key       = os.getenv("ORS_API_KEY", "")
 
     configured = {
-        "gemini":      bool(google_key),
+        "gemini":      bool(gemini_key),
         "openweather": bool(weather_key),
         "ors":         bool(ors_key),
     }

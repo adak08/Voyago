@@ -15,5 +15,5 @@ class TripPlanRequest(BaseModel):
     @validator("budget")
     def validate_budget(cls, v):
         if v.lower() not in ["low", "medium", "high", "budget", "luxury"]:
-            raise ValueError("budget must be low, medium, or high")
+            raise ValueError("budget must be one of: low, medium, high, budget, luxury")
         return v.lower()
