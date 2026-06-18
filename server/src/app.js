@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import { errorHandler, notFound } from "./middlewares/error.middleware.js";
 
 // Routes
@@ -21,7 +23,17 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const app = express();
 
+// Security headers
+app.use(helmet());
 
+// Rate limiting for Auth routes
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 100, // Limit each IP to 100 requests per window
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+});
+app.use("/api/v1/auth", authLimiter);
 
 // CORS
 app.use(

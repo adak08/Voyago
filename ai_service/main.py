@@ -25,3 +25,20 @@ app.include_router(router)
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "voyago-ai"}
+
+import os
+
+def get_groq_status():
+    """Check if Groq is configured"""
+    groq_key = os.getenv("GROQ_API_KEY", "").strip()
+    return {"groq": bool(groq_key)}
+
+@app.get("/status")
+def status():
+    """Check LLM service status"""
+    return {
+        "service": "voyago-ai",
+        "status": "ok",
+        "llm": "groq",
+        "groq_configured": get_groq_status()["groq"]
+    }

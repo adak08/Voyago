@@ -6,6 +6,7 @@ services:
     dockerContext: .
     port: 5000
     envVars:
+      # --- AI Service ---
       - key: GOOGLE_API_KEY
         sync: false
       - key: GEMINI_MODEL
@@ -14,11 +15,37 @@ services:
         sync: false
       - key: ORS_API_KEY
         sync: false
-      - key: VITE_API_URL
-        sync: false
       - key: PYTHON_SERVICE_URL
         value: http://localhost:8000
+        
+      # --- Node Backend Settings ---
       - key: PORT
         value: 5000
       - key: NODE_ENV
         value: production
+      - key: CLIENT_URL
+        value: https://voyago.onrender.com
+      - key: MONGODB_URI
+        sync: false
+        
+      # --- Security / JWT ---
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_RESET_SECRET
+        generateValue: true
+        
+      # --- 3rd Party Integrations ---
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false

@@ -62,7 +62,6 @@ export const register = async (req, res, next) => {
         const otp = generateOTP();
         await OTP.deleteMany({ email, purpose: "signup" }); // clear old OTPs
         await OTP.create({ email, otp, purpose: "signup" });
-        console.log(`OTP for ${email}: ${otp}`);
         await sendOTPEmail(email, name, otp);
 
         res.status(201).json({
@@ -144,9 +143,6 @@ export const resendOTP = async (req, res, next) => {
         try {
             await sendOTPEmail(email, user.name, otp);
         } catch (error) {
-            if (process.env.NODE_ENV === "development") {
-                console.log(`OTP for ${email}: ${otp}`);
-            }
             return res.status(error.statusCode || 503).json({
                 success: false,
                 message:
@@ -183,9 +179,6 @@ export const forgotPassword = async (req, res, next) => {
         try {
             await sendPasswordResetOTPEmail(email, user.name, otp);
         } catch (error) {
-            if (process.env.NODE_ENV === "development") {
-                console.log(`Password reset OTP for ${email}: ${otp}`);
-            }
             return res.status(error.statusCode || 503).json({
                 success: false,
                 message:
