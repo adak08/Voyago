@@ -314,12 +314,33 @@ export const resetPassword = async (req, res, next) => {
 };
 
 // @POST /api/auth/login
+// @POST /api/auth/login
 export const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
 
         const user = await User.findOne({ email }).select("+password");
-        if (!user || !(await user.comparePassword(password))) {
+
+        // 1. Check if the user even exists
+        if (!user) {
+            return res
+                .status(401)
+                .json({ success: false, message: "Invalid credentials" });
+        }
+
+        // 2. PROTECT BCRYPT: Check if this is a Google Auth user (no password)
+        if (!user.password) {
+            return res
+                .status(400)
+                .json({
+                    success: false,
+                    message: "This email is registered with Google. Please use 'Continue with Google'."
+                });
+        }
+
+        // 3. Now it is 100% safe to run bcrypt compare
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
             return res
                 .status(401)
                 .json({ success: false, message: "Invalid credentials" });
@@ -479,32 +500,32 @@ export const getMe = async (req, res, next) => {
 
 // @PATCH /api/auth/update-profile
 export const updateProfile = async (req, res, next) => {
-  try {
-    const { name } = req.body;
-    let avatar = req.body.avatar;
+    try {
+        const { name } = req.body;
+        let avatar = req.body.avatar;
 
-    const user = await User.findById(req.user.id);
+        const user = await User.findById(req.user.id);
 
-    if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+
+        if (name) user.name = name;
+        if (avatar) user.avatar = avatar;
+
+        await user.save();
+
+        res.json({
+            success: true,
+            message: "Profile updated successfully",
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                avatar: user.avatar,
+            },
+        });
+    } catch (err) {
+        next(err);
     }
-
-    if (name) user.name = name;
-    if (avatar) user.avatar = avatar;
-
-    await user.save();
-
-    res.json({
-      success: true,
-      message: "Profile updated successfully",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
 };
