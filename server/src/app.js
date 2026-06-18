@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import fs from "fs";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { errorHandler, notFound } from "./middlewares/error.middleware.js";
@@ -62,6 +63,23 @@ app.use("/api/v1/trips", tripRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 app.use("/api/v1/chat", chatRoutes);
 app.use("/api/v1/ai", aiRoutes);
+
+// --- Static Frontend Serving ---
+const clientDist = path.join(__dirname, "../../client/dist");
+if (fs.existsSync(clientDist)) {
+  console.log(`✅ Serving static files from: ${clientDist}`);
+  app.use(express.static(clientDist));
+
+  app.get('*', (req, res, next) => {
+    // Skip API routes so they fall through to the notFound handler
+    if (req.path.startsWith('/api/')) {
+      return next();
+    }
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+} else {
+  console.warn(`⚠️ Client build not found at: ${clientDist}`);
+}
 
 // Error handling
 app.use(notFound);
