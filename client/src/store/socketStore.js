@@ -38,9 +38,10 @@ export const useSocketStore = create((set, get) => ({
       import.meta.env.VITE_SOCKET_URL || "http://localhost:5000",
       {
         auth: { token },
-        transports: ["websocket"],
+        transports: ["websocket", "polling"],
         reconnection: true,
         reconnectionDelay: 1000,
+        withCredentials: true,
       },
     );
 

@@ -3,6 +3,7 @@ import axios from "axios";
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "/api",
   timeout: 30000,
+  withCredentials: true,
 });
 
 api.interceptors.request.use((config) => {
@@ -12,6 +13,16 @@ api.interceptors.request.use((config) => {
       delete config.headers["Content-Type"];
       delete config.headers["content-type"];
     }
+  }
+
+  const stored = localStorage.getItem("auth-storage");
+  if (stored) {
+    try {
+      const { state } = JSON.parse(stored);
+      if (state?.token) {
+        config.headers.Authorization = `Bearer ${state.token}`;
+      }
+    } catch {}
   }
 
   return config;

@@ -24,8 +24,29 @@ dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const app = express();
 
-// Security headers
-app.use(helmet());
+// ==================== SECURITY & CSP ====================
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: [
+        "'self'",
+        'https://voyago-jvit.onrender.com',
+        'wss://voyago-jvit.onrender.com',
+        process.env.CLIENT_URL,
+        'http://localhost:5000',
+        'ws://localhost:5000',
+        process.env.PYTHON_SERVICE_URL
+      ].filter(Boolean),
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://accounts.google.com"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://accounts.google.com"],
+      imgSrc: ["'self'", "data:", "https://res.cloudinary.com"],
+      fontSrc: ["'self'", "data:"],
+      mediaSrc: ["'self'", "https://res.cloudinary.com"],
+      frameSrc: ["'self'", "https://accounts.google.com"]
+    },
+  },
+}));
 
 // Rate limiting for Auth routes
 const authLimiter = rateLimit({
@@ -36,15 +57,28 @@ const authLimiter = rateLimit({
 });
 app.use("/api/v1/auth", authLimiter);
 
-// CORS
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+// ==================== CORS ====================
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://voyago-jvit.onrender.com',
+  process.env.CLIENT_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+}));
 
 // Body parsers
 app.use(express.json({ limit: "10mb" }));
