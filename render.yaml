@@ -24,7 +24,11 @@ services:
       - key: NODE_ENV
         value: production
       - key: CLIENT_URL
-        value: https://voyago.onrender.com
+        value: https://voyago-jvit.onrender.com
+      - key: VITE_API_URL
+        value: https://voyago-jvit.onrender.com/api/v1
+      - key: VITE_SOCKET_URL
+        value: wss://voyago-jvit.onrender.com
       - key: MONGODB_URI
         sync: false
         

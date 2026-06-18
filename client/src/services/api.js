@@ -1,9 +1,14 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || 
-                (import.meta.env.MODE === 'production' 
-                  ? 'https://voyago-jvit.onrender.com/api/v1' 
-                  : '/api/v1');
+let API_URL = import.meta.env.VITE_API_URL;
+
+if (typeof window !== 'undefined' && window.location.hostname === 'voyago-jvit.onrender.com') {
+  API_URL = 'https://voyago-jvit.onrender.com/api/v1';
+} else if (!API_URL) {
+  API_URL = import.meta.env.MODE === 'production' 
+    ? 'https://voyago-jvit.onrender.com/api/v1' 
+    : '/api/v1';
+}
 
 const api = axios.create({
   baseURL: API_URL,
