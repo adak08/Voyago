@@ -1,55 +1,53 @@
-import nodemailer from "nodemailer";
-
-const getSmtpConfig = () => {
-  const smtpUser = process.env.EMAIL_USER;
-  const smtpPassRaw = process.env.EMAIL_PASS || "";
-
-  const smtpHost = process.env.EMAIL_HOST;
-  const smtpPort = Number.parseInt(process.env.EMAIL_PORT || "587", 10);
-  const smtpSecure =
-    process.env.EMAIL_SECURE === "true" || smtpPort === 465;
-
-  return {
-    smtpHost,
-    smtpPort: Number.isNaN(smtpPort) ? 587 : smtpPort,
-    smtpSecure,
-    smtpUser,
-    smtpPass: smtpPassRaw.replace(/\s+/g, ""),
-  };
-};
-
-const createTransporter = () => {
-  const { smtpHost, smtpPort, smtpSecure, smtpUser, smtpPass } =
-    getSmtpConfig();
-
-  return nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpSecure,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
-};
-
 const ensureEmailConfig = () => {
-  const { smtpHost, smtpUser, smtpPass } = getSmtpConfig();
-  if (smtpHost && smtpUser && smtpPass) return;
-
-  const err = new Error(
-    "Email service is not configured. Set EMAIL_HOST, EMAIL_USER and EMAIL_PASS in server/.env"
-  );
-  err.statusCode = 503;
-  throw err;
+  if (!process.env.BREVO_API_KEY) {
+    const err = new Error(
+      "Email service is not configured. Set BREVO_API_KEY in server/.env"
+    );
+    err.statusCode = 503;
+    throw err;
+  }
 };
 
 const sendMailWithErrorHandling = async (mailOptions) => {
   ensureEmailConfig();
-  const transporter = createTransporter();
+
+  // Parse "Name <email@domain.com>" or just "email@domain.com"
+  let senderName = "Voyago";
+  let senderEmail = "noreply@voyago.com";
+  
+  if (mailOptions.from) {
+    const match = mailOptions.from.match(/(.*)<(.*)>/);
+    if (match) {
+      senderName = match[1].trim();
+      senderEmail = match[2].trim();
+    } else {
+      senderEmail = mailOptions.from;
+    }
+  }
+
+  const payload = {
+    sender: { name: senderName, email: senderEmail },
+    to: [{ email: mailOptions.to }],
+    subject: mailOptions.subject,
+    htmlContent: mailOptions.html,
+  };
 
   try {
-    await transporter.sendMail(mailOptions);
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "api-key": process.env.BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error(`Brevo API Error: ${response.status} ${errorData}`);
+      throw new Error(`Brevo API Error: ${response.status}`);
+    }
   } catch (error) {
     const err = new Error(
       "Unable to send email right now. Please try again in a moment."
