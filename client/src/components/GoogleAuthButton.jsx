@@ -58,14 +58,17 @@ export default function GoogleAuthButton({ onCredential, disabled = false }) {
         await loadGoogleScript();
         if (!mounted || !buttonRef.current || !window.google?.accounts?.id) return;
 
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: (response) => {
-            if (response?.credential) {
-              onCredential(response.credential);
-            }
-          },
-        });
+        if (!window.__googleAuthInitialized) {
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: (response) => {
+              if (response?.credential) {
+                onCredential(response.credential);
+              }
+            },
+          });
+          window.__googleAuthInitialized = true;
+        }
 
         buttonRef.current.innerHTML = "";
         window.google.accounts.id.renderButton(buttonRef.current, {
