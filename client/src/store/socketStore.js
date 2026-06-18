@@ -34,8 +34,15 @@ export const useSocketStore = create((set, get) => ({
     const { socket } = get();
     if (socket?.connected) return;
 
+    let socketUrl = import.meta.env.VITE_SOCKET_URL;
+    if (typeof window !== 'undefined' && window.location.hostname === 'voyago-jvit.onrender.com') {
+      socketUrl = 'https://voyago-jvit.onrender.com';
+    } else if (!socketUrl) {
+      socketUrl = 'http://localhost:5000';
+    }
+
     const newSocket = io(
-      import.meta.env.VITE_SOCKET_URL || "http://localhost:5000",
+      socketUrl,
       {
         auth: { token },
         transports: ["websocket", "polling"],
