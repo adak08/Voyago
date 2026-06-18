@@ -12,9 +12,9 @@ const sendMailWithErrorHandling = async (mailOptions) => {
   ensureEmailConfig();
 
   // Parse "Name <email@domain.com>" or just "email@domain.com"
-  let senderName = "Voyago";
-  let senderEmail = "noreply@voyago.com";
-  
+  let senderName = "adak";
+  let senderEmail = "adarshkumarpbh1@gmail.com";
+
   if (mailOptions.from) {
     const match = mailOptions.from.match(/(.*)<(.*)>/);
     if (match) {
@@ -32,6 +32,10 @@ const sendMailWithErrorHandling = async (mailOptions) => {
     htmlContent: mailOptions.html,
   };
 
+  console.log(`[Brevo] Sending email from: ${senderName} <${senderEmail}>`);
+  console.log(`[Brevo] Recipient: ${mailOptions.to}`);
+  console.log(`[Brevo] Subject: ${mailOptions.subject}`);
+
   try {
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
@@ -43,29 +47,43 @@ const sendMailWithErrorHandling = async (mailOptions) => {
       body: JSON.stringify(payload),
     });
 
+    const responseBody = await response.text();
+    console.log(`[Brevo] Response status: ${response.status}`);
+    console.log(`[Brevo] Response body: ${responseBody}`);
+
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error(`Brevo API Error: ${response.status} ${errorData}`);
-      throw new Error(`Brevo API Error: ${response.status}`);
+      console.error(`[Brevo] API Error: ${response.status} ${responseBody}`);
+      const err = new Error(`Brevo API Error: ${response.status} - ${responseBody}`);
+      err.statusCode = response.status;
+      throw err;
+    }
+
+    try {
+      const data = JSON.parse(responseBody);
+      if (data.messageId) {
+        console.log(`[Brevo] Message ID: ${data.messageId}`);
+      }
+    } catch (e) {
+      // responseBody wasn't JSON
     }
   } catch (error) {
-    const err = new Error(
-      "Unable to send email right now. Please try again in a moment."
-    );
-    err.statusCode = 503;
+    console.error(`[Brevo] Failed to send email:`, error);
+    // Don't hide the original Brevo error, propagate it
+    const err = new Error(error.message || "Unable to send email right now.");
+    err.statusCode = error.statusCode || 503;
     err.cause = error;
     throw err;
   }
 };
 
 export const sendOTPEmail = async (email, name, otp) => {
-    const mailOptions = {
-        from:
-            process.env.EMAIL_FROM ||
-            "Smart Trip Planner <noreply@smarttrip.com>",
-        to: email,
-        subject: "Verify your email - Smart Trip Planner",
-        html: `
+  const mailOptions = {
+    from:
+      process.env.EMAIL_FROM ||
+      "adarsadak <adarshkumarpbh1@gmail.com>",
+    to: email,
+    subject: "Verify your email - Smart Trip Planner",
+    html: `
     <!DOCTYPE html>
     <html>
     <head><meta charset="UTF-8"><title>Email Verification</title></head>
@@ -83,18 +101,18 @@ export const sendOTPEmail = async (email, name, otp) => {
     </body>
     </html>
     `,
-    };
+  };
   await sendMailWithErrorHandling(mailOptions);
 };
 
 export const sendPasswordResetOTPEmail = async (email, name, otp) => {
-    const mailOptions = {
-        from:
-            process.env.EMAIL_FROM ||
-            "Smart Trip Planner <noreply@smarttrip.com>",
-        to: email,
-        subject: "Password reset OTP - Smart Trip Planner",
-        html: `
+  const mailOptions = {
+    from:
+      process.env.EMAIL_FROM ||
+      "adarsadak <adarshkumarpbh1@gmail.com>",
+    to: email,
+    subject: "Password reset OTP - Smart Trip Planner",
+    html: `
     <!DOCTYPE html>
     <html>
     <head><meta charset="UTF-8"><title>Password Reset</title></head>
@@ -112,23 +130,23 @@ export const sendPasswordResetOTPEmail = async (email, name, otp) => {
     </body>
     </html>
     `,
-    };
-    await sendMailWithErrorHandling(mailOptions);
+  };
+  await sendMailWithErrorHandling(mailOptions);
 };
 
 export const sendTripInviteEmail = async (
-    email,
-    inviterName,
-    tripTitle,
-    inviteCode
+  email,
+  inviterName,
+  tripTitle,
+  inviteCode
 ) => {
-    const mailOptions = {
-      from:
-        process.env.EMAIL_FROM ||
-        "Smart Trip Planner <noreply@smarttrip.com>",
-        to: email,
-        subject: `${inviterName} invited you to "${tripTitle}"`,
-        html: `
+  const mailOptions = {
+    from:
+      process.env.EMAIL_FROM ||
+      "adak <adarshkumarpbh1@gmail.com>",
+    to: email,
+    subject: `${inviterName} invited you to "${tripTitle}"`,
+    html: `
     <div style="font-family: Arial, sans-serif; max-width:480px;margin:0 auto;padding:32px;">
       <h2 style="color:#6366f1;">You're invited! ✈️</h2>
       <p><strong>${inviterName}</strong> invited you to join the trip: <strong>${tripTitle}</strong></p>
@@ -139,6 +157,6 @@ export const sendTripInviteEmail = async (
       </a>
     </div>
     `,
-    };
-    await sendMailWithErrorHandling(mailOptions);
+  };
+  await sendMailWithErrorHandling(mailOptions);
 };
