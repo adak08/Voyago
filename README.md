@@ -8,7 +8,7 @@ A full-stack **MERN** group trip planning platform with AI-powered itineraries, 
 
 - **AI Trip Planner** — Python AI microservice (FastAPI + LangGraph + Gemini + OpenWeather + OpenRouteService) generates day-by-day itineraries with weather, route, and dynamic budget breakdowns
 - **Real-time Group Chat** — Socket.IO powered messaging with typing indicators, emoji reactions, file/media uploads, and read receipts
-- **Smart Expense Splitting** — Equal, custom, and percentage splits with balance calculation and receipt uploads
+- **Smart Expense Splitting** — Equal, exact, and percentage splits with balance calculation and receipt uploads
 - **Itinerary Board** — AI-generated or manually editable itinerary synced live across all members
 - **Photo Gallery** — Drag-and-drop uploads via Cloudinary with lightbox viewer
 - **Authentication** — JWT + Refresh Token rotation, OTP email verification, Google OAuth, and Forgot Password flow
@@ -26,7 +26,7 @@ A full-stack **MERN** group trip planning platform with AI-powered itineraries, 
 | Database | MongoDB + Mongoose |
 | AI | Python FastAPI + LangGraph + Google Gemini 2.5 Flash + OpenWeather + OpenRouteService |
 | Media | Cloudinary (photos, receipts, chat media) |
-| Email | Nodemailer |
+| Email | Brevo (Sendinblue) API |
 | Cache / Scaling | Redis (optional, for Socket.IO multi-server adapter) |
 | Auth | JWT (access + refresh tokens), Google OAuth |
 
@@ -143,12 +143,8 @@ CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
 
-# Email (SMTP)
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_SECURE=false
-EMAIL_USER=your_email@gmail.com
-EMAIL_PASS=your_app_password
+# Email (Brevo API)
+BREVO_API_KEY=your_brevo_api_key
 EMAIL_FROM=Voyago <noreply@voyago.com>
 
 # Google OAuth
@@ -307,7 +303,7 @@ cd ../server && npm start
 | `User` | Auth, profile, Google OAuth, refresh token |
 | `Trip` | Title, destination, dates, members, invite code, photos |
 | `Itinerary` | AI-generated or manual day-by-day plan, weather/route/budget data |
-| `Expense` | Amount, category, paidBy, splits (equal/unequal/percentage), receipt |
+| `Expense` | Amount, category, paidBy, splits (equal/exact/percentage), receipt |
 | `Settlement` | Payment records between trip members |
 | `Message` | Chat messages with media support and emoji reactions |
 | `Notification` | In-app notifications for trip events |
@@ -329,8 +325,10 @@ cd ../server && npm start
 | `add_reaction` | Client → Server | Add emoji reaction |
 | `remove_reaction` | Client → Server | Remove emoji reaction |
 | `reaction_updated` | Server → Client | Reaction state broadcast |
-| `expense_added` | Server → Client | New expense sync |
-| `itinerary_synced` | Server → Client | Itinerary update sync |
+| `expense_added` | Client → Server | Trigger new expense sync |
+| `expense_updated` | Server → Client | New expense sync broadcast |
+| `itinerary_updated` | Client → Server | Trigger itinerary update sync |
+| `itinerary_synced` | Server → Client | Itinerary update sync broadcast |
 | `trip_photo_uploaded` | Server → Client | New photo sync |
 | `trip_admin_transferred` | Server → Client | Admin change sync |
 | `new_notification` | Server → Client | Real-time notification |
